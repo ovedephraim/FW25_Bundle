@@ -628,41 +628,41 @@ void DEBUG_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 	  {
 		   if(fota_mode == 0)
 		   {
-				   if(Size != sizeof(aDbgRxBuffer)/2U)//filter half complete events
-				   {
-						MSG_HDR msg;
-						signed portBASE_TYPE xHigherPriorityTaskWoken=0;
+			   if(Size != sizeof(aDbgRxBuffer)/2U)//filter half complete events
+			   {
+					MSG_HDR msg;
+					signed portBASE_TYPE xHigherPriorityTaskWoken=0;
 
-						msg.hdr.all=MAKE_MSG_HDRTYPE(0,MSG_SRC_ISR1,MSG_TYPE_DEBUG_DATA_BLK);
-						msg.data=Size;
-						msg.buf=aDbgRxBuffer;
+					msg.hdr.all=MAKE_MSG_HDRTYPE(0,MSG_SRC_ISR1,MSG_TYPE_DEBUG_DATA_BLK);
+					msg.data=Size;
+					msg.buf=aDbgRxBuffer;
 
-						if (!xQueueSendFromISR(auxInQ,&msg,&xHigherPriorityTaskWoken))
-						{
-							// Failure to send message with received buffer
-							Error_Handler((uint8_t *)__FILE__, __LINE__);
-						}
-
-					  /* Initializes Rx sequence using Reception To Idle event API.
-						 As DMA channel associated to UART Rx is configured as Circular,
-						 reception is endless.
-						 If reception has to be stopped, call to HAL_UART_AbortReceive() could be used.
-						 Use of HAL_UARTEx_ReceiveToIdle_DMA service, will generate calls to
-						 user defined HAL_UARTEx_RxEventCallback callback for each occurrence of
-						 following events :
-						 - DMA RX Half Transfer event (HT)
-						 - DMA RX Transfer Complete event (TC)
-						 - IDLE event on UART Rx line (indicating a pause is UART reception flow)
-					  */
-
-					  /* todo send message to rx framer task */
-
-					  if (HAL_OK != HAL_UARTEx_ReceiveToIdle_DMA(&huart5, aDbgRxBuffer, sizeof(aDbgRxBuffer)))
-					  {
+					if (!xQueueSendFromISR(auxInQ,&msg,&xHigherPriorityTaskWoken))
+					{
+						// Failure to send message with received buffer
 						Error_Handler((uint8_t *)__FILE__, __LINE__);
-					  }
-				   }
-		   }
+					}
+
+				  /* Initializes Rx sequence using Reception To Idle event API.
+					 As DMA channel associated to UART Rx is configured as Circular,
+					 reception is endless.
+					 If reception has to be stopped, call to HAL_UART_AbortReceive() could be used.
+					 Use of HAL_UARTEx_ReceiveToIdle_DMA service, will generate calls to
+					 user defined HAL_UARTEx_RxEventCallback callback for each occurrence of
+					 following events :
+					 - DMA RX Half Transfer event (HT)
+					 - DMA RX Transfer Complete event (TC)
+					 - IDLE event on UART Rx line (indicating a pause is UART reception flow)
+				  */
+
+				  /* todo send message to rx framer task */
+
+				  if (HAL_OK != HAL_UARTEx_ReceiveToIdle_DMA(&huart5, aDbgRxBuffer, sizeof(aDbgRxBuffer)))
+				  {
+					Error_Handler((uint8_t *)__FILE__, __LINE__);
+				  }
+			   }
+		  }
 		   else
 		   {
 //			   if(xmodem_on == false)
@@ -673,9 +673,11 @@ void DEBUG_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 //			   {
 //				   uart_receive(&aRxBuffer[0], 1029);
 //			   }
-				  UartReadyRx = true;
-//				  uart_receive(&aDbgRxBuffer[0], 1029);
+
+				  uart_receive(&aDbgRxBuffer[0], 1029);
+			      UartReadyRx = true;
 		   }
+
 	  }
 }/* End of HAL_UARTEx_RxEventCallback */
 #endif

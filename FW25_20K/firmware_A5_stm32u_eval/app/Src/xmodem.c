@@ -1110,6 +1110,38 @@ uint32_t checkyheader(void)
 }
 
 
+void ack_mimic(void)
+{
+	  uint32_t timeout = 0;;
+
+	  uart_receive(&aDbgRxBuffer[0], 1029);
+	  while(1)
+	  {
+		if(UartReadyRx == true)
+		{
+			Transmit(X_ACK);
+			UartReadyRx = false;
+			timeout = 0;
+		}
+		else
+		{
+			if(++timeout > 200000)
+			{
+				UartReadyRx = true;
+				timeout = 0;
+
+				/* Refresh IWDG: reload counter */
+				if(HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
+				{
+				  /* Refresh Error */
+				  Error_Handler((uint8_t *)__FILE__, __LINE__);
+				}
+			}
+		}
+	  }
+}
+
+
 /**
  * @brief   This function is the base of the Xmodem protocol.
  *          When we receive a header from UART, it decides what action it shall take.
@@ -1151,30 +1183,27 @@ uint32_t get_ymodem(void)
 			}
 			else
 			{
-				HAL_Delay(1000);
+				HAL_Delay(100);
 				Transmit(X_NAK);
 			}
 		  }
-//		  else
-//		  {
-//			 uart_receive(&aDbgRxBuffer[0],40);
-//             HAL_Delay(1000);
-//			 Transmit(X_NAK);
-//		  }
-
-		  // Timeout equal 1 minute
-//		  if(++timeout > 20000)
-//		  {
-//			  transmit_notification(&timeout_note[0]);
-//			  return X_ERROR;
-//		  }
 	  }
+//	  UartReadyRx = false;
+//	  // Ack for Y_HEADER.
+//	  Transmit(X_ACK);
+
+//	  ack_mimic();
+
+//	  result = uart_receive(&aDbgRxBuffer[0], 1029);
 
 	  // Erase top of flash.
 	  flasherase(0);
-	  xmodem_on = true;
-	  result = uart_receive(&aDbgRxBuffer[0], 1029);
+//	  xmodem_on = true;
+
+	  uart_receive(&aDbgRxBuffer[0], 1029);
+	  // Ack for Y_HEADER.
 	  Transmit(X_ACK);
+	  UartReadyRx = false;
 //	  trasmit_answer(&response_ok[0],0);
 
 		/* The header can be: SOH, STX, EOT and CAN. */
@@ -1183,9 +1212,13 @@ uint32_t get_ymodem(void)
 			timeout = 0;
 			while(UartReadyRx == false)
 			{
-				HAL_Delay(50);
-//				if(++timeout > 900000)
-//				{
+				//HAL_Delay(50);
+				if(++timeout > 200000)
+				{
+				     timeout = 0;
+				     UartReadyRx = true;
+//					 Transmit(X_ACK);
+//					 break;
 //					end_of_handshake = true;
 //					header = aDbgRxBuffer[0];
 //					if(header == X_EOT)
@@ -1198,7 +1231,7 @@ uint32_t get_ymodem(void)
 //						result = X_ERROR;
 //						return result;
 //					}
-//				}
+				}
 			}
 
 			result = checkstring();
@@ -1206,11 +1239,9 @@ uint32_t get_ymodem(void)
 			if(result == X_OK)
 			{
 				header = aDbgRxBuffer[0];
+				header = 0x02;
 			}
-//			else
-//			{
-//
-//			}
+
 
 			/* Refresh IWDG: reload counter */
 			if(HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
@@ -1234,9 +1265,9 @@ uint32_t get_ymodem(void)
 								//  flash_write(index);
 						///		  flash_read(FLASH_BACKUP_START_ADDR + index * WRITE_BLOCK,&compare_block[0],WRITE_BLOCK);
 								  // Calculate CS.
-								  cs += checksum_adder();
-								  index++;
-								  result = compare_array();
+//								  cs += checksum_adder();
+//								  index++;
+//								  result = compare_array();
 //								  if(result != X_OK)
 //								  {
 //									 trasmit_answer(&response_bad[0],index - 1);
@@ -1254,7 +1285,7 @@ uint32_t get_ymodem(void)
 								  break;
 					  case X_EOT:
 								  Transmit(X_ACK);
-								  transmit_notification(&end_of_tx[0]);
+								//  transmit_notification(&end_of_tx[0]);
 
 								//  for(a = 0;a < 16;a++)
 								//	  _flash_file_param.f_magic_val2[a] = runtime_a5_write_data[a];

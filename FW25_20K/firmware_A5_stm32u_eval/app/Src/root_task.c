@@ -46,6 +46,7 @@ extern UART_HandleTypeDef huart5;
 
 extern uint8_t aDbgRxBuffer[];
 
+
 extern int16_t temp_datax[];
 extern uint8_t charger_sm;
 extern uint8_t fota_mode;
@@ -249,7 +250,8 @@ void rootTask(void *para)
 		//	vTaskDelay(100);
 		//	HAL_UART5Only_MspInit(&huart5);
 		//	__HAL_UART_ENABLE_IT( &huart5, UART_IT_RXNE);
-			uart_receive(&aDbgRxBuffer[0],20);
+		//	uart_receive(&aDbgRxBuffer[0],20);
+
 			result = get_ymodem();
 			if(result != 0)
 			{
