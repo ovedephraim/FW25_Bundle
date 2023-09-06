@@ -1,0 +1,4 @@
+stm32u5xx_ll_pwr.h:2853:22:LL_PWR_ClearFlag_STOP	1
+stm32u5xx_ll_pwr.h:2953:22:LL_PWR_ClearFlag_WU	1
+stm32u5xx_ll_pwr.h:2980:22:LL_PWR_DisableNSecurePrivilege	1
+stm32u5xx_ll_pwr.c:55:13:LL_PWR_DeInit	1

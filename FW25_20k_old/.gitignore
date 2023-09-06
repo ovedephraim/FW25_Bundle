@@ -1,0 +1,15 @@
+*.d
+*.o
+*.bin
+*.elf
+*.list
+*.su
+*.mk
+Debug
+
+/firmware_A5_stm32u_eval/Debug/firmware_A5_stm32u_eval.elf
+/firmware_A5_stm32u_eval/.settings/*.prefs
+/firmware_A5_stm32u_eval/Debug_Board/*.map
+/firmware_A5_stm32u_eval/Debug_Board
+/firmware_A5_stm32u_eval/Release/Drivers/CMSIS/DSP/Source/DistanceFunctions/*.cyclo
+*.cyclo

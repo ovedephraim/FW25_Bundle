@@ -1,0 +1,236 @@
+/**************************************************************************//**
+ * @file root_task.c
+ * @brief Root task
+ * @author Anton Kanaev
+ *
+ * @version 0.0.1
+ * @date 20.10.2015
+ *
+ * @section License
+ * <b>(C) Copyright 2022 Atlasense Ltd., http://www.atlasesne.com </b>
+*/
+#include <stdio.h>
+#include <string.h>
+
+#include "ver.h"
+#include "root_task.h"
+
+#include "FreeRTOSConfig.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "bt_manager_task.h"
+#include "stub.h"
+
+#include "A5_proto/record.h"//RECORD_init(void)
+#include "bus.h" //BUS_Init
+
+#include "auxcmd.h"//error codes
+#include "channel_manager_task.h"
+#include "cmd_handler_task.h"
+#include "main.h"
+#include "periodic_dispatcher_task.h"
+#include "rtc.h" //RTC_Init(void)
+#include "sys_errno.h"//error codes
+#include "io_ctl.h"//io_ctl_enable_power
+
+extern IWDG_HandleTypeDef hiwdg;
+
+#define SKIN		0
+#define POLY		1
+#define AMB			2
+
+extern int16_t temp_datax[];
+
+//new queue ad here
+QueueHandle_t cmdq=NULL;
+QueueHandle_t dispq=NULL;
+QueueHandle_t chanmngq=NULL;
+QueueHandle_t btmngq=NULL;
+
+/**
+ * @brief system_init
+ * @brief This function initiates system resources after start
+ * @returns 0 success
+ */
+int system_init(void)
+{
+   int rv=SYS_ERROR_NONE;
+   uint8_t IwdgStatus=0;
+   char dbug[200]={0};
+
+	if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST) != 0x00u)
+	{
+		/* IWDGRST flag set: set IwdgStatus */
+		IwdgStatus = 1;
+	}
+	/* Clear reset flags in any cases */
+	__HAL_RCC_CLEAR_RESET_FLAGS();
+
+
+   /* reset BL653 device */
+   BL653_hw_reset();
+
+   /* Initialize devices */
+   initAuxDevParams();
+
+   if(IwdgStatus)
+   {
+		sprintf(dbug,
+				"[WARNING] POWERED UP after WD reset!\r\n");
+   }
+   else
+   {
+		sprintf(dbug,
+				"[INFO] NORMAL POWER UP \r\n");
+   }
+	/* send to debug aux channel */
+	aux_sendToAux(dbug,strlen(dbug),0,1,DBG_AUX);
+
+   /* init shared memory */
+   if(RECORD_init()){
+	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+   }
+   /* init rtc clock */
+   if(RTC_Init()){
+	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+   }
+
+	return rv;
+}/* End of system_init */
+
+
+/* Private user code ---------------------------------------------------------*/
+void rootTask(void *para)
+{
+   int rv=SYS_ERROR_NONE;
+
+   /* system modules init */
+   rv=system_init();
+   if(rv !=SYS_ERROR_NONE)
+	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+
+#define MAX30001BIT (0)
+#define LIS2DWBIT   (0)
+#define LSM6DSLBIT  (0)
+#define MAX30003BIT (0)
+#define ADCBUSBIT   (0)
+
+#define BLE_MQTT (0)
+
+   /* TODO single Bit task ,bit functions for all sensors */
+#if defined ( LIS2DWBIT ) && ( LIS2DWBIT )
+   extern void LIS2DW_bit_func(void *para);
+   vTaskDelay(100);
+   LIS2DW_bit_func(NULL);
+   vTaskDelay(100);
+#endif
+#if defined ( MAX30001BIT ) && ( MAX30001BIT )
+   extern int MAX30001_hw_test(void * arg);
+   vTaskDelay(100);
+   if(MAX30001_hw_test(NULL))
+   {
+	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+   }
+   vTaskDelay(100);
+#endif
+#if defined ( MAX30003BIT ) && ( MAX30003BIT )
+   extern int MAX30003_hw_test(void * arg);
+   vTaskDelay(100);
+   if(MAX30003_hw_test(NULL))
+   {
+	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+   }
+   vTaskDelay(100);
+#endif
+#if defined ( LSM6DSLBIT ) && ( LSM6DSLBIT )
+   extern void LSM6DSL_hw_test(void * arg);
+   vTaskDelay(100);
+   LSM6DSL_hw_test(NULL);
+   vTaskDelay(1000000);
+#endif
+
+#if defined ( ADCBUSBIT ) && ( ADCBUSBIT )
+   BUS_ADC1_init_and_register(ADC1_CH0);
+	BUS_ADC1_exec_run();
+	for (;;){
+		vTaskDelay(100);
+	}
+#endif
+
+#if defined ( BLE_MQTT ) && ( BLE_MQTT )
+	extern int RunMQTTBLETransportDemo( void );
+	RunMQTTBLETransportDemo();
+#endif
+
+
+   /* start aux tasks */
+   rv=startAuxTasks(\
+		   STACK_SIZE_FOR_AUX_TX_TASK,
+		   PRI_FOR_AUX_TX_TASK,
+		   STACK_SIZE_FOR_AUX_RX_TASK,
+		   PRI_FOR_AUX_RX_TASK);
+   if(rv !=pdPASS)
+	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+
+   /* create BT  tasks */
+   rv=startBTMngTask(\
+ 		   &btmngq, NULL, "btmng",
+		   STACK_SIZE_FOR_BTMN_TASK,
+		   PRI_FOR_BTMN_TASK);
+   if(rv !=pdPASS)
+	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+
+   /* Create  application tasks and
+      set same priority for every one */
+   rv=startCmdHndlTask(\
+		   &cmdq, NULL,   "cmdh",
+		   STACK_SIZE_FOR_CMDH_TASK,
+		   PRI_FOR_CMDH_TASK);
+   if(rv !=pdPASS)
+	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+
+   rv=startDispatcherTask(\
+		   &dispq, NULL,  "disp",
+		   STACK_SIZE_FOR_DISP_TASK,
+		   PRI_FOR_DISP_TASK);
+   if(rv !=pdPASS)
+	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+
+   rv=startChanMngTask(\
+		   &chanmngq,NULL,"chan",
+		   STACK_SIZE_FOR_CHAN_TASK,
+		   PRI_FOR_CHAN_TASK);
+   if(rv !=pdPASS)
+	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+
+   aux_sendToAux(get_sw_ver_banner,strlen(get_sw_ver_banner),0,1,2);
+
+	for (;;)
+	{
+		vTaskDelay(1000);
+#if 0
+		temp_datax[SKIN] = (uint16_t) temp_datax[SKIN] * 0.78125;
+		temp_datax[POLY] = (uint16_t) temp_datax[POLY] * 0.78125;
+		temp_datax[AMB] = (uint16_t) temp_datax[AMB] * 0.78125;
+		sprintf(log_buf,"Temperature =  %4d %4d %4d\r\n",temp_datax[SKIN],
+														 temp_datax[POLY],
+														 temp_datax[AMB]);
+
+
+
+	    aux_sendToAux(log_buf,strlen(log_buf),0,1,DBG_AUX);
+#endif
+
+	    /* Refresh IWDG: reload counter */
+	    if(HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
+	    {
+	      /* Refresh Error */
+	      Error_Handler((uint8_t *)__FILE__, __LINE__);
+	    }
+	}
+}/* End of rootTask */
+
+
+
+

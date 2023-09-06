@@ -1,0 +1,827 @@
+/**************************************************************************//**
+* @file Parser.c
+* @brief parser function
+* @author Anton Kanaev
+* @version 0.0.1
+* @date 30.04.2022
+*
+* @section License
+* <b>(C) Copyright 2022 Atlasense Ltd., http://www.atlasesne.com </b>
+*/
+
+
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <stdbool.h>
+
+#include "Parser.h"
+#include "auxcmd.h"
+#include "Freertos.h"
+#include "A5_proto/record.h"//RECORD_set_rec_col_map_8
+#include "hw_tests.h"
+
+#include "channel_manager_task.h"
+#include "hw_tests.h"
+#include "rtc.h"
+#include "sys_errno.h"
+#include "record.h"
+#include "ver.h"
+#include "json.h"
+#include "main.h"
+#include "TMP117/tmp117_dev.h"
+#include "lp55281.h"
+
+
+#define TRUE  1
+#define FALSE 0
+
+extern QueueHandle_t chanmngq;
+
+extern led_sm     _led_sm;
+
+
+typedef bool Bool;
+typedef uint16_t UInt16;
+typedef int16_t Int16;
+
+static char PARSER_Response[MAX_RESPONCE_TO_CMD_RECORD_SIZE];
+extern uint8_t charger_sm;
+extern uint8_t fota_mode;
+
+
+Bool PARSER_Str2UInt16(char *str, UInt16 *ch)
+{
+	if (sscanf(str, "%u", (unsigned int*)ch)  == 1)	{	// only %d is supported in initial configuration. see: http://processors.wiki.ti.com/index.php/Printf_support_for_MSP430_CCSTUDIO_compiler
+		return TRUE;
+	}
+	return FALSE;
+}
+
+Bool PARSER_Str2Int16(char *str, Int16 *ch)
+{
+	if (sscanf(str, "%d", (int*)ch)  == 1)	{	// only %d is supported in initial configuration. see: http://processors.wiki.ti.com/index.php/Printf_support_for_MSP430_CCSTUDIO_compiler
+		return TRUE;
+	}
+	return FALSE;
+}
+
+Bool PARSER_Str2UInt32(char *str, uint32_t *ch)
+{
+	if (sscanf(str, "%lu", ch)  == 1)	{	// only %d is supported in initial configuration. see: http://processors.wiki.ti.com/index.php/Printf_support_for_MSP430_CCSTUDIO_compiler
+		return TRUE;
+	}
+	return FALSE;
+}
+
+Bool PARSER_Str2Int32(char *str, uint32_t *ch)
+{
+	if (sscanf(str, "%ld", ch)  == 1)	{	// only %d is supported in initial configuration. see: http://processors.wiki.ti.com/index.php/Printf_support_for_MSP430_CCSTUDIO_compiler
+		return TRUE;
+	}
+	return FALSE;
+}
+
+
+
+
+
+
+#define PARSER_SUBSTRINGS_MAX	8	// up to 8 substrings in command
+
+void PARSER_PrepareSHwTestResponse(char *cmd,char *strCh, int err)
+{
+	memset(PARSER_Response,0,100);
+
+	strcpy(PARSER_Response,cmd);
+	strcat(PARSER_Response, " ");
+	strcat(PARSER_Response, strCh);
+	strcat(PARSER_Response," = ");
+	strcat(PARSER_Response, get_sys_error_verb(err));
+	strcat(PARSER_Response, " OK");
+	strcat(PARSER_Response,"\n");
+}
+
+void PARSER_PrepareChannelParameterResponse(char *cmd, char *strCh, char *answer)
+{
+	strcpy(PARSER_Response,cmd);
+	strcat(PARSER_Response, " ");
+	strcat(PARSER_Response, strCh);
+	strcat(PARSER_Response," = ");
+	strcat(PARSER_Response, answer);
+	strcat(PARSER_Response, " OK");
+	strcat(PARSER_Response,"\n");
+}
+
+void PARSER_PrepareSystemCommandResponse(char *cmd, uint32_t val, uint32_t lim)
+{
+	strcpy(PARSER_Response,cmd);
+	if(val)
+	{
+		char ans[20]={0};
+		if(lim<sizeof(ans))
+		{
+			strcat(PARSER_Response," ");
+			itoa(val,ans,lim);
+			strcat(PARSER_Response,ans);
+		}
+	}
+	strcat(PARSER_Response," ! OK");
+	strcat(PARSER_Response,"\n");
+
+}/* end of PARSER_PrepareSystemCommandResponse */
+
+void PARSER_PrepareSystemParameterResponse(char *cmd, char *answer)
+{
+	memset(PARSER_Response,0,100);
+
+	strcpy(PARSER_Response,cmd);
+	strcat(PARSER_Response," = ");
+	strcat(PARSER_Response, answer);
+	strcat(PARSER_Response, " OK");
+	strcat(PARSER_Response, "\n");
+}
+
+void PARSER_PrepareError(const char * verb_code)
+{
+	strcpy(PARSER_Response, "Error: ");
+	strcat(PARSER_Response, verb_code);
+	strcat(PARSER_Response, "\n");
+}/* End of PARSER_PrepareError */
+
+/**
+ * @brief This function handles command strings
+ */
+bool PARSER_ParseCommand(char *cmd, PACKETBUF_HDR **resp, MEMBUF_POOL *pool)
+{
+	Bool sendResponse = FALSE;
+	char answer[80] = {0};
+	char *strs[PARSER_SUBSTRINGS_MAX]={0};
+	uint8_t i=0;
+	bool ret=FALSE;
+	bool en=false;
+	time_t	t=0;
+	uint32_t tmp =0;
+
+	uint16_t ch=0xFF;
+	uint32_t val=0;
+
+	const char *delimiters=" \t\r\n.:";
+	char *err_verb = NULL;
+
+	/* reset response buffer */
+	memset(PARSER_Response,0,sizeof(PARSER_Response));
+
+	if(cmd && (cmd[0]=='[' || cmd[0]=='{'))
+	{
+		strs[0]=cmd;
+	}
+	else
+	{
+		strs[i] = strtok (cmd,delimiters);
+		while (strs[i] != NULL)	  {
+			i++;
+			if(i==PARSER_SUBSTRINGS_MAX)
+				break;
+			strs[i] = strtok (NULL, delimiters);
+		}
+	}
+
+	if((strs[0] != NULL))
+	{
+		switch(*strs[0])
+		{
+		    //===========================================================================================
+		    //	Json Commands
+		    //===========================================================================================
+			case '[':
+			case '{':{
+
+			    bool key_found= false;
+
+				memset(PARSER_Response,0,sizeof(PARSER_Response));
+
+//				if(strstr(strs[0],"[\"Channels\"]"))
+//				{
+//					CHAN_GetallChannelConfig(PARSER_Response);
+//					ret = sendResponse = TRUE;
+//				}
+//				if(strstr(strs[0],"[\"C\"]"))
+//				{
+//					CHAN_GetallChannelConfig_C(PARSER_Response);
+//					ret = sendResponse = TRUE;
+//				}
+
+				key_found = prob_json_key(strs[0],PARSER_Response);
+				if(true == key_found)
+				{
+					ret = sendResponse = TRUE;
+				}
+				else
+				{
+					err_verb = "malformed command";
+					break;
+				}
+			}
+			break;
+	case 'V':
+	case 'v':
+				if((*strs[1] == '=') && (*strs[2] == '1'))
+				{
+					char * str="\r\n  HW Version A5 backup 0.0.0.1 \r\n";
+					    aux_sendToAux(str,strlen(str),0,1,DBG_AUX);
+				}
+				break;
+	case '~':
+				if((*strs[1] == '=') && (*strs[2] == '1'))
+				{
+					fota_mode = true;
+				//	char * str="\r\n  Start FOTA \r\n";
+				//	aux_sendToAux(str,strlen(str),0,1,DBG_AUX);
+				}
+				else
+				{
+					fota_mode = 0;
+				//	char * str="\r\n  Stop FOTA \r\n";
+				//	aux_sendToAux(str,strlen(str),0,1,DBG_AUX);
+				}
+				break;
+	case 'F':
+	case 'f':
+	            if((*strs[1] == '=') && (*strs[2] == 'R'))
+	            {
+	            	// Read Flash ID.
+	            }
+				break;
+		//===============================================================================================
+		//	PEnable heater tracker
+		//===============================================================================================
+
+			case 'M':
+			case 'm':
+
+				switch(*strs[1])	{
+					case '=':
+						/* convert string to uint32_t unix time stamp */
+						if(!PARSER_Str2UInt32(strs[2], (uint32_t*)&tmp) ){
+							err_verb = "bad format";
+						}
+						else
+						{
+							en = (bool)(tmp != 0);
+							TEMPX_HeaterEnable(en);
+						}
+					case '?':
+
+						itoa(en,answer,10);
+						PARSER_PrepareSystemParameterResponse("M",answer);
+						ret = sendResponse = TRUE;
+						break;
+				}
+				break;
+		//===============================================================================================
+		//	Per channel commands/ inquiries for single value
+		//===============================================================================================
+
+			case 'C'://========================= set/get channel activation status ======================
+			case 'c':{
+
+				if((strs[1] != NULL) && (PARSER_Str2UInt16(strs[1], &ch)))
+				{
+					if((strs[2] != NULL))
+					{
+						switch(*strs[2])
+						{
+							case '=':// set-----------------------------------
+
+								if((strs[3] != NULL) && PARSER_Str2UInt16(strs[3],(uint16_t*) &val))
+								{
+									if(0 != CHAN_SetChannelActivation((CHAN_Channels_t)ch, val))
+									{
+										err_verb = "bad channel id or illegal command";
+										break;
+									}
+								}
+
+							case '?'://get------------------------------------
+
+								if(0 != CHAN_GetChannelActivation((CHAN_Channels_t)ch, &val))
+								{
+									err_verb = "bad channel id";
+								}
+								else
+								{
+									sprintf(answer,"%lu",val);
+									PARSER_PrepareChannelParameterResponse("C",strs[1],answer);
+									ret = sendResponse = TRUE;
+								}
+
+							break;
+						}
+					}
+				}
+
+			}break;
+
+		//===============================================================================================
+		//	system parameters inquiry T
+		//===============================================================================================
+
+			case 'N': //======================== Get Number of channels =================================
+			case 'n':{ // "N ?LF", "n ?LF"
+
+				if((strs[1] != NULL) && (*strs[1]=='?'))
+				{
+					CHAN_GetallChannelNumber(&val);
+					sprintf(answer,"%lu",val);
+					PARSER_PrepareSystemParameterResponse("N",answer);
+					ret = sendResponse = TRUE;
+				}
+				else
+				{
+					err_verb = "bad format";
+				}
+			}break;
+
+		//===============================================================================================
+		//	system commands
+		//===============================================================================================
+
+			case 'A':
+			case 'a':
+			{
+				if( (strs[1] != NULL) && (*strs[1]=='!'))	{
+					/* set delivery request */
+					sendResponse = TRUE;
+
+					/* send command to the channel manager task to stop operational mode execution */
+					if (pdPASS==sendToChannelManager(chanmngq, NULL, CHAN_CMD_START_ALL, MAKE_MSG_HDRTYPE(0,MSG_SRC_AUX_DBRX,MSG_TYPE_CMD), portMAX_DELAY))
+					{
+					    /*get time */
+						RTC_get(&t);
+						/* store in backup register */
+						RTC_save_time_stamp(t);
+
+						/* prepare buffer with positive response */
+						PARSER_PrepareSystemCommandResponse("A",t,10);
+						ret=TRUE;
+					}
+				}
+			}break;
+
+			case 'Z':
+			case 'z':
+			{
+				if((strs[1] != NULL) &&  (*strs[1]=='!'))	{
+
+					/* set delivery request */
+					sendResponse = TRUE;
+
+					/* send command to the channel manager task to stop operational mode execution */
+					if (pdPASS==sendToChannelManager(chanmngq, NULL, CHAN_CMD_STOP_ALL, MAKE_MSG_HDRTYPE(0,MSG_SRC_AUX_DBRX,MSG_TYPE_CMD), portMAX_DELAY))
+					{
+						/* prepare buffer with positive response */
+						PARSER_PrepareSystemCommandResponse("Z",0,0);
+						ret = TRUE;
+					}
+				}
+			}break;
+
+			case 'G':
+		    case 'g':
+						switch(*strs[2])
+						{
+							case '0':
+								charger_sm = 0;
+								break;
+							case '1':
+								charger_sm = 1;
+								break;
+							case '2':
+								charger_sm = 2;
+								break;
+						}
+						break;
+			case 'L':
+			case 'l':
+						switch(*strs[2])
+						{
+//							case '=':
+//								/* convert string to uint32_t unix time stamp */
+//								if(!PARSER_Str2UInt32(strs[2], (uint32_t*)&tmp) ){
+//									err_verb = "bad format";
+//								}
+//								else
+//								{
+//								//	t =tmp;
+//								//	RTC_set(t);
+//								}
+//								break;
+							case '0':
+								 _led_sm.led = l_idle;
+//								t=0;
+//								RTC_get(&t);
+//								itoa(t,answer,10);
+//								PARSER_PrepareSystemParameterResponse("U",answer);
+//								ret = sendResponse = TRUE;
+								break;
+							case '1':
+								_led_sm.led = l_drain;
+//								t=0;
+//								RTC_get(&t);
+//								itoa(t,answer,10);
+//								PARSER_PrepareSystemParameterResponse("U",answer);
+//								ret = sendResponse = TRUE;
+								break;
+						}
+						break;
+
+			case 'U':
+			case 'u':
+
+				switch(*strs[1])	{
+					case '=':
+						/* convert string to uint32_t unix time stamp */
+						if(!PARSER_Str2UInt32(strs[2], (uint32_t*)&tmp) ){
+							err_verb = "bad format";
+						}
+						else
+						{
+							t =tmp;
+							RTC_set(t);
+						}
+					case '?':
+
+						t=0;
+						RTC_get(&t);
+						itoa(t,answer,10);
+						PARSER_PrepareSystemParameterResponse("U",answer);
+						ret = sendResponse = TRUE;
+						break;
+				}
+				break;
+			//===============================================================================================
+			//	Hardware tests command: H <id> ? response: H <id> = OK or error code
+			//===============================================================================================
+				case 'H':
+				case 'h':{
+
+					if((strs[1] != NULL) && (PARSER_Str2UInt16(strs[1], &ch)))
+					{
+					    int hw_ret;
+
+						switch(*strs[2])
+						{
+							case '?'://get------------------------------------
+
+								/* Execute hardware validation */
+								hw_ret = hw_tester_test(ch);
+
+								/* convert to verbose */
+								PARSER_PrepareSHwTestResponse("H",strs[1], hw_ret);
+
+								/* send answer over serial port */
+								aux_sendToAux(PARSER_Response,strlen(PARSER_Response),0,1,DBG_AUX);
+
+								/* set control flags */
+								ret = TRUE;
+								sendResponse = FALSE;
+
+							break;
+						}
+					}
+
+				}break;
+
+
+
+#if 0
+		case 'T'://todo 1st priority -------------------------------------------------------------
+		case 't':
+			if(*strs[1]=='?'){
+				CHAN_GetTimeframeStr(answer);
+				PARSER_PrepareSystemParameterResponse("T",answer);
+				ret = TRUE;
+			}
+		break;//==================================================================================
+#endif
+
+#if 0
+		case 'L'://todo 1st priority -------------------------------------------------------------
+		case 'l':
+			if( (PARSER_Str2UInt16(strs[1], &ch)) && (*strs[2]=='?') && (CHAN_GetChannelNameStr((CHAN_Channels_t)ch, answer)) )	{
+				PARSER_PrepareChannelParameterResponse("L",strs[1],answer);
+				ret = TRUE;
+			}
+		break;//==================================================================================
+#endif
+
+#if 0
+		case 'X'://todo 1st priority -------------------------------------------------------------
+		case 'x':
+			if( (PARSER_Str2UInt16(strs[1], &ch)) && (*strs[2]=='?') && (CHAN_GetChannelXducerStr((CHAN_Channels_t)ch, answer)) )	{
+				PARSER_PrepareChannelParameterResponse("X",strs[1],answer);
+				ret = TRUE;
+			}
+		break;//==================================================================================
+#endif
+
+#if 0
+		case 'P'://todo 1st priority -------------------------------------------------------------
+		case 'p':
+			if( (PARSER_Str2UInt16(strs[1], &ch)) && (*strs[2]=='?') && (CHAN_GetChannelPhysDimStr((CHAN_Channels_t)ch, answer)) )	{
+				PARSER_PrepareChannelParameterResponse("P",strs[1],answer);
+				ret = TRUE;
+			}
+		break;//==================================================================================
+#endif
+
+#if 0
+		case 'Q'://todo 1st priority -------------------------------------------------------------
+		case 'q':
+			if( (PARSER_Str2UInt16(strs[1], &ch)) && (*strs[2]=='?') && (CHAN_GetChannelPhysMinStr((CHAN_Channels_t)ch, answer)) )	{
+				PARSER_PrepareChannelParameterResponse("Q",strs[1],answer);
+				ret = TRUE;
+			}
+		break;//==================================================================================
+#endif
+
+#if 0
+		case 'R'://todo 1st priority -------------------------------------------------------------
+		case 'r':
+				if( (PARSER_Str2UInt16(strs[1], &ch)) && (*strs[2]=='?') && (CHAN_GetChannelPhysMaxStr((CHAN_Channels_t)ch, answer)) )	{
+					PARSER_PrepareChannelParameterResponse("R",strs[1],answer);
+					ret = TRUE;
+				}
+		break;//==================================================================================
+#endif
+
+#if 0
+		case 'D'://todo 1st priority -------------------------------------------------------------
+		case 'd':
+			if( (PARSER_Str2UInt16(strs[1], &ch)) && (*strs[2]=='?') && (CHAN_GetChannelDigMinStr((CHAN_Channels_t)ch, answer)) )	{
+				PARSER_PrepareChannelParameterResponse("D",strs[1],answer);
+				ret = TRUE;
+			}
+		break;//==================================================================================
+#endif
+
+#if 0
+		case 'E'://todo 1st priority -------------------------------------------------------------
+		case 'e':
+			if( (PARSER_Str2UInt16(strs[1], &ch)) && (*strs[2]=='?') && (CHAN_GetChannelDigMaxStr((CHAN_Channels_t)ch, answer)) )	{
+				PARSER_PrepareChannelParameterResponse("E",strs[1],answer);
+				ret = TRUE;
+			}
+		break;//=================================================================================
+#endif
+
+#if 0
+		case 'F'://todo 1st priority ------------------------------------------------------------
+		case 'f':
+			if( (PARSER_Str2UInt16(strs[1], &ch)) && (*strs[2]=='?') && (CHAN_GetChannelFilterStr((CHAN_Channels_t)ch, answer)) )	{
+				PARSER_PrepareChannelParameterResponse("F",strs[1],answer);
+				ret = TRUE;
+			}
+		break;//=================================================================================
+#endif
+
+#if 0
+		case 'S'://todo 1st priority ------------------------------------------------------------
+		case 's':
+			if( (PARSER_Str2UInt16(strs[1], &ch)) && (*strs[2]=='?') && (CHAN_GetChannelSampleRateStr((CHAN_Channels_t)ch, answer)) )	{
+				PARSER_PrepareChannelParameterResponse("S",strs[1],answer);
+				ret = TRUE;
+			}
+		break;//=================================================================================
+#endif
+
+#if 0
+		case 'Y'://todo 1st priority ------------------------------------------------------------
+		case 'y':
+			if( (PARSER_Str2UInt16(strs[1], &ch)) && (*strs[2]=='?') && (CHAN_GetChannelIsSyncStr((CHAN_Channels_t)ch, answer)) )	{
+				PARSER_PrepareChannelParameterResponse("Y",strs[1],answer);
+				ret = TRUE;
+			}
+		break;//================================================================================
+#endif
+
+
+
+
+
+#if 0
+		case 'I'://set get global system parameters priority 2 --------------------------------------
+		case 'i':
+			if(PARSER_Str2UInt16(strs[1], &ch))	{	// channel is valid
+
+				switch(*strs[2])	{
+				case '=':
+					if(!( PARSER_Str2UInt16(strs[3], &val) && ADS131_SetChannelInput((ADS131_Channels_t)ch, (ADS131_Input_t)val) ) ){
+						break;
+					}
+					// fall through...
+				case '?':
+					if(CHAN_GetChannelInputStr((CHAN_Channels_t)ch, answer) )	{
+						PARSER_PrepareChannelParameterResponse("I",strs[1],answer);
+						ret = TRUE;
+					}
+					break;
+				}
+			}
+		break;
+#endif
+
+#if 0
+		case 'G'://set get global system parameters priority 2 --------------------------------------
+		case 'g':
+			if(PARSER_Str2UInt16(strs[1], &param))	{
+				switch(*strs[2])	{
+				case '=':
+					if( !(PARSER_Str2UInt16(strs[3], &ch) && PARSER_Str2UInt16(strs[4], &val) && PARSER_SetParameter(param, ch, val)) )	{
+					if( !(PARSER_Str2UInt16(strs[3], &val) && PARSER_SetParameter(param, val)) )	{
+						break;
+					}
+					// fall through...
+				case '?':
+					if( PARSER_Str2UInt16(strs[3], &ch) && PARSER_GetParameter(param, ch, &val) ){
+					if( PARSER_GetParameter(param, &val) ){
+						sprintf(answer, "%u", val);
+                        PARSER_PrepareGlobalParameterResponse(strs[1], strs[3], answer);
+						PARSER_PrepareGlobalParameterResponse(strs[1], answer);
+						ret = TRUE;
+					}
+					break;
+				}
+			}
+		break;//=====================================================================================
+#endif
+
+#if 0
+		case 'V'://---------------------------------------------------------------------------------
+		case 'v':// priority 2
+		{
+			if(PARSER_Str2UInt16(strs[1], &val) && PARSER_Str2UInt16(strs[2], &on) && \
+					PARSER_Str2UInt16(strs[3], &off) && *strs[4]=='!')	{
+				if(val == 0)	{
+					VIB_KillVibration();
+				}
+				else	{
+
+					vib.VibrationsNum = val;
+					vib.VibrationsOnTime = on;
+					vib.VibrationsOffTime = off;
+
+					VIB_SetVibration(vib);
+				}
+				char response[25];
+				sprintf(response,"V %s %s %s",strs[1], strs[2], strs[3]);
+				PARSER_PrepareSystemCommandResponse(response);
+				ret = TRUE;
+			}
+		}
+		break;//====================================================================================
+#endif
+
+#if 0
+		case 'M':
+		case 'm':// priority 2
+			switch(*strs[1])	{
+			case '=':
+				if(!PARSER_Str2UInt16(strs[2], &val))	{
+					break;
+				}
+				VIB_SetActivation(val);	// value is valid
+				// fall through...
+				// no break
+			case '?':
+				sprintf(answer, "%d", VIB_GetActivation());
+				PARSER_PrepareSystemParameterResponse("M",answer);
+				ret = TRUE;
+				break;
+			}
+		break;//==================================================================================
+#endif
+
+#if 0
+		case '0'://watch dog priority 2 -------------------------------------------------------------
+			if( *strs[1]=='!')	{
+
+				WDTCTL = 0xDEAD;	// Force PUC
+
+			}
+		break;//=====================================================================================
+#endif
+
+
+				default:
+					ret = FALSE;
+				break;
+		}
+	}
+
+    /* build common for every case error string */
+	if(ret == FALSE && err_verb != NULL)	{
+		PARSER_PrepareError((const char *)err_verb);
+	}
+
+	if((sendResponse) && (resp != NULL))
+	{
+
+#if 0
+		PACKETBUF_HDR *buf=NULL;
+
+		/* Allocate memory buffer for response */
+		if (NULL == (buf = getPacketBufferWithWait(pool,FIRST_PACKET_SEGMENT|LAST_PACKET_SEGMENT,MT_PACKET_FROM_AUX_CMD, A4_PROTO_FORMAT, 0, portMAX_DELAY))){
+			return FALSE;
+		}
+
+		/* copy response payload string in the buffer */
+		memcpy(PACKETBUF_DATA(buf),PARSER_Response, strlen(PARSER_Response));
+
+		/* assign output value */
+		*resp = (PACKETBUF_HDR *)buf;
+#endif
+
+		/* inserts response in to the shared collection map */
+		if(RECORD_set_rec_col_map_8(RESPONSE_TO_CMD_RECORD_TYPE, (uint8_t *)PARSER_Response,strlen(PARSER_Response)))
+		{
+			ret=FALSE;
+		}
+	}
+	return ret;
+}/* End of PARSER_ParseCommand */
+
+
+#if 0 //todo remove
+#if 0 //Anton
+		case 'A':
+		case 'a':
+			if( *strs[1]=='!')	{
+
+
+				if(Semaphore_pend(mutexPARSER_RecordingActive, 0))	{	// mutex Available, no recording in place
+					SuspendHeartBeatTask();
+					CHAN_Reset();
+					CHAN_PrepareChannels();
+					#if (SD_STORE_EDF==1)
+					EDFFile_CreateNewFile();
+					#endif
+					PARSER_PrepareSystemCommandResponse("A");
+
+					#if defined(NOVALERT)
+					Semaphore_post(semNA_StartAlgorithm);	// For NOVAlert algo control
+					Semaphore_post(hSemNA_StartAlgorithm);	// For NOVAlert algo control
+					#endif
+					ret = TRUE;
+
+					ADS131_Start();
+
+				}
+				else	{	// already recording
+					ret = FALSE;
+				}
+				sendResponse = FALSE;
+			}
+			break;
+
+		case 'Z':
+		case 'z':
+			if( *strs[1]=='!')	{
+			//	ADS131_Stop();
+			//09.04.22 Anton	Task_sleep(CHANNEL_TIMEFRAME_MS); //let time for ADS131 to stop 100MS
+			//	CHAN_Reset();
+	//			ResumeHeartBeatTask();
+				#if (SD_STORE_EDF==1)
+				int i = 2;
+				while ( (Mailbox_getNumPendingMsgs(mbxCHAN_DataStore) != 0) && i--)	{
+					Task_sleep(CHANNEL_TIMEFRAME_MS);
+				}
+				if(i == 0){
+					System_printf("mbxCHAN_DataStore did not handles in %d[ms]\n",CHANNEL_TIMEFRAME_MS*2);
+					System_flush();
+				}
+				EDFFile_CloseCurrentFile();
+				#endif
+				i = 2;
+
+	//			while ( (Mailbox_getNumPendingMsgs(mbxCHAN_DataXmit) != 0) && i--)	{
+	//				Task_sleep(CHANNEL_TIMEFRAME_MS);
+	//
+	//			}
+				if(i == 0){
+			//		System_printf("mbxCHAN_DataXmit did not handles in %d[ms]\n",CHANNEL_TIMEFRAME_MS*2);
+		//			System_flush();
+				}
+				PARSER_PrepareSystemCommandResponse("Z");
+			//	Semaphore_post(mutexPARSER_RecordingActive);
+				sendResponse = TRUE;
+				ret = TRUE;
+			}
+			break;
+#endif
+
+
+#endif
+
