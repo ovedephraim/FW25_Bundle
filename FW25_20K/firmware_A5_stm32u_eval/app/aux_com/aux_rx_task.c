@@ -626,8 +626,14 @@ void DEBUG_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
 	  if(huart->Instance==UART5)//DEBUG Aux
 	  {
-		   if(fota_mode == 0)
-		   {
+//    	  if(fota_mode == 1)
+//		  {
+//			   //Size = 65000;
+//    		  uart_receive(&aDbgRxBuffer[0], 1029);
+//    		  UartReadyRx = true;
+//    		//  return;
+//		  }
+ //   	  else
 			   if(Size != sizeof(aDbgRxBuffer)/2U)//filter half complete events
 			   {
 					MSG_HDR msg;
@@ -661,24 +667,17 @@ void DEBUG_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 				  {
 					Error_Handler((uint8_t *)__FILE__, __LINE__);
 				  }
-			   }
-		  }
-		   else
-		   {
-//			   if(xmodem_on == false)
-//			   {
-//				   uart_receive(&compare_block[0], 16);  // 20
-//			   }
-//			   else
-//			   {
-//				   uart_receive(&aRxBuffer[0], 1029);
-//			   }
 
 				  uart_receive(&aDbgRxBuffer[0], 1029);
-			      UartReadyRx = true;
-		   }
-
-	  }
+				  UartReadyRx = true;
+			   }
+		  }
+//		  else
+//		  {
+//				  uart_receive(&aDbgRxBuffer[0], 1029);
+//			      UartReadyRx = true;
+//		  }
+//	  }
 }/* End of HAL_UARTEx_RxEventCallback */
 #endif
 

@@ -127,7 +127,7 @@ void flash_transfer(uint32_t origin,uint32_t numerator)
 	  while (address < (address_init + WRITE_BLOCK)) //FLASH_USER_NS_END_ADDR)
 	  {
 	   // if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_QUADWORD, Address, ((uint32_t)FlashWord)) == HAL_OK)
-	    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_QUADWORD, address, ((uint32_t) &compare_block[index])) == HAL_OK)
+	    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_QUADWORD, address, ((uint32_t) &aDbgRxBuffer[index])) == HAL_OK)
 	    {
 	      address = address + 16;  /* increment to the next Flash word */
 	      index   = index + 16;
@@ -830,39 +830,35 @@ uint32_t checkstring(void)
 	uint32_t result = X_OK;
 	int16_t crc_received,crc_calculated;
 
-	//    uint8_t abc[1029];
+	    //uint8_t abc[1029];
 
-	//    memcpy(&abc[0],&aDbgRxBuffer[0],1029);
+	    //memcpy(&abc[0],&aDbgRxBuffer[0],1029);
 
-	//	if(aDbgRxBuffer[0] != X_STX)
-	//	{
-	//	  result = X_ERROR;
-	//	  return result;
-	//	}
+		if(aDbgRxBuffer[0] != X_STX)
+		{
+		  result = X_ERROR;
+		  return result;
+		}
 
+		if((aDbgRxBuffer[1] + aDbgRxBuffer[2]) != 0xff)
+		{
+		  result = X_ERROR;
+		  return result;
+		}
 
-		// ephraim
-	//	if((aDbgRxBuffer[1] + aDbgRxBuffer[2]) != 0xff)
-	//	{
-	//	  result = X_ERROR;
-	//	  return result;
-	//	}
-
-
-	//	crc_received = ((uint16_t)aDbgRxBuffer[X_PACKET_CRC_HIGH_INDEX] << 8u) | ((uint16_t)aDbgRxBuffer[X_PACKET_CRC_LOW_INDEX]);
-		crc_received = aDbgRxBuffer[X_PACKET_CRC_HIGH_INDEX] + (aDbgRxBuffer[X_PACKET_CRC_LOW_INDEX] * 0x100);
+		crc_received = aDbgRxBuffer[X_PACKET_CRC_LOW_INDEX] + (aDbgRxBuffer[X_PACKET_CRC_HIGH_INDEX] * 0x100);
 
 		/* We calculate it too. */
-		// ephraim
-	 //   crc_calculated = xmodem_calc_crc(&aDbgRxBuffer[X_PACKET_START_DATA],1024);
+	    crc_calculated = xmodem_calc_crc(&aDbgRxBuffer[X_PACKET_START_DATA],1024);
 
-	    // ephraim
-	//    if(crc_received != crc_calculated)
-	//    {
-	//    //	transmit_notification(&crc_bad[0]);
-	//	  result = X_ERROR;
-	//	  return result;
-	//	}
+	    //abc[12] = 0X33;
+
+	    if(crc_received != crc_calculated)
+	    {
+	      //	transmit_notification(&crc_bad[0]);
+		  result = X_ERROR;
+		  return result;
+		}
 	 return result;
 }
 
@@ -1156,174 +1152,148 @@ uint32_t get_ymodem(void)
   uint8_t y_first_header_received = false;
   uint32_t end_of_handshake = false;
   uint32_t index = 0;
-  uint32_t timeout = 0;
+//  uint32_t timeout = 0;
 
-  /* Get the header from UART. */
-  //result = uart_receive(&aRxBuffer[0], 16);
 
- // trasmit_answer(&y_modem[0],0);
+  // trasmit_answer(&y_modem[0],0);
   // For FOTA command.
   Transmit(X_ACK);
 
   	/* Loop until there isn't any error (or until we jump to the user application). */
   UartReadyRx = false;
 
-	  while(y_first_header_received == false)
+  while(y_first_header_received == false)
+  {
+	  if(aDbgRxBuffer[0] == Y_HEADER)
 	  {
-		  if(aDbgRxBuffer[0] == Y_HEADER)
-		  {
-			 LongDelay();
-			// Check validity of package.
-			result = checkyheader();
-			result = X_OK;
-			if(result == X_OK)
-			{
-				y_first_header_received = true;
-				xmodem_on = true;
-			}
-			else
-			{
-				HAL_Delay(100);
-				Transmit(X_NAK);
-			}
-		  }
-	  }
-//	  UartReadyRx = false;
-//	  // Ack for Y_HEADER.
-//	  Transmit(X_ACK);
-
-//	  ack_mimic();
-
-//	  result = uart_receive(&aDbgRxBuffer[0], 1029);
-
-	  // Erase top of flash.
-	  flasherase(0);
-//	  xmodem_on = true;
-
-	  uart_receive(&aDbgRxBuffer[0], 1029);
-	  // Ack for Y_HEADER.
-	  Transmit(X_ACK);
-	  UartReadyRx = false;
-//	  trasmit_answer(&response_ok[0],0);
-
-		/* The header can be: SOH, STX, EOT and CAN. */
-		while(end_of_handshake == false)
+		 LongDelay();
+		// Check validity of package.
+		result = checkyheader();
+		result = X_OK;
+		if(result == X_OK)
 		{
-			timeout = 0;
-			while(UartReadyRx == false)
-			{
-				//HAL_Delay(50);
-				if(++timeout > 200000)
-				{
-				     timeout = 0;
-				     UartReadyRx = true;
-//					 Transmit(X_ACK);
-//					 break;
-//					end_of_handshake = true;
-//					header = aDbgRxBuffer[0];
-//					if(header == X_EOT)
-//					{
-//						UartReadyRx = true;
-//					}
-//					else
-//					{
-//				//		transmit_notification(&timeout_note[0]);
-//						result = X_ERROR;
-//						return result;
-//					}
-				}
-			}
+			y_first_header_received = true;
+			xmodem_on = true;
+		}
+		else
+		{
+			HAL_Delay(100);
+			Transmit(X_NAK);
+		}
+	  }
+  }
+  //	  ack_mimic();
 
-			result = checkstring();
-			result = X_OK;
-			if(result == X_OK)
-			{
-				header = aDbgRxBuffer[0];
-				header = 0x02;
-			}
+  // Erase top of flash.
+  flasherase(0);
+
+  aDbgRxBuffer[0] = 0x11;
+  // Ack for Y_HEADER.
+  Transmit(X_ACK);
+  uart_receive(&aDbgRxBuffer[0], 1029);
+  UartReadyRx = false;
+  //  trasmit_answer(&response_ok[0],0);
+
+  /* The header can be: SOH, STX, EOT and CAN. */
+  while(end_of_handshake == false)
+  {
+	timeout = 0;
+	while(UartReadyRx == false)
+	{
+		//HAL_Delay(20);
+		//	 if(++timeout > 200000)
+		//	 {
+		//		 timeout = 0;
+		//	 }
+	}
+
+	result = checkstring();
+	if(result == X_OK)
+	{
+		header = aDbgRxBuffer[0];
+	}
+
+	/* Refresh IWDG: reload counter */
+	if(HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
+	{
+	  /* Refresh Error */
+	  Error_Handler((uint8_t *)__FILE__, __LINE__);
+	}
+
+	switch(header)
+	{
+		  /* 128 or 1024 bytes of data. */
+		  /* we use only 1K package */
+		  case X_SOH:
+					  Transmit(X_NAK);
+					  break;
+		  case X_STX:
+				    // change later destination of flash addr.
+			        flash_transfer(FLASH_RUNTIME_STORE,index);
+					//  flash_write(index);
+		    ///		flash_read(FLASH_BACKUP_START_ADDR + index * WRITE_BLOCK,&compare_block[0],WRITE_BLOCK);
+					//  Calculate CS.
+					//  cs += checksum_adder();
+					  index++;
+					//  result = compare_array();
+					//	if(result != X_OK)
+					//  {
+					//		 trasmit_answer(&response_bad[0],index - 1);
+					//	     eturn X_ERROR;
+					//	}
+					//	else
+					//	{
+					//		trasmit_answer(&response_ok[0],index - 1);
+					//	}
+
+					  // Force new RX data.
+					  aDbgRxBuffer[0] = 0x11;
+					  UartReadyRx = false;
+					  Transmit(X_ACK);
+					  break;
+		  case X_EOT:
+					//  Transmit(X_ACK);
 
 
-			/* Refresh IWDG: reload counter */
-			if(HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
-			{
-			  /* Refresh Error */
-			  Error_Handler((uint8_t *)__FILE__, __LINE__);
-			}
+					//  transmit_notification(&end_of_tx[0]);
 
-			switch(header)
-			{
-					  /* 128 or 1024 bytes of data. */
-					  /* we use only 1K package */
-					  case X_SOH:
-								  Transmit(X_NAK);
+					//  for(a = 0;a < 16;a++)
+					//	  _flash_file_param.f_magic_val2[a] = runtime_a5_write_data[a];
+					//  memcpy(&_flash_file_param.f_file2[0],"Application #2",strlen("Application #2"));
+					//  _flash_file_param.f_size2  = WRITE_BLOCK * (index - 1);
+					//  _flash_file_param.f_blocks2  = index - 1;
+					//  _flash_file_param.f_crc2  = cs;
+					//  _flash_file_param.f_crc2 = _flash_file_param.f_crc2;
+					//  _flash_file_param.f_blocks2 = size;
+					  if(_flash_file_param.f_blocks2 != (index - 1))
+					  {
+						  result = X_ERROR;
+						  return result;
+					  }
 
-								  break;
-					  case X_STX:
-								  // Manage data of rx.
-						          // chnage later destination of flash addr.
-						  ///        flash_transfer(FLASH_RUNTIME_STORE,index);
-								//  flash_write(index);
-						///		  flash_read(FLASH_BACKUP_START_ADDR + index * WRITE_BLOCK,&compare_block[0],WRITE_BLOCK);
-								  // Calculate CS.
-//								  cs += checksum_adder();
-//								  index++;
-//								  result = compare_array();
-//								  if(result != X_OK)
-//								  {
-//									 trasmit_answer(&response_bad[0],index - 1);
-//									 return X_ERROR;
-//								  }
-//								  else
-//								  {
-//									  trasmit_answer(&response_ok[0],index - 1);
-//								  }
+					  if(_flash_file_param.f_crc2 != cs)
+					  {
+						  result = X_ERROR;
+						  return result;
+					  }
 
-								  // Force new RX data.
-								  aDbgRxBuffer[0] = 0x11;
-								  UartReadyRx = false;
-								  Transmit(X_ACK);
-								  break;
-					  case X_EOT:
-								  Transmit(X_ACK);
-								//  transmit_notification(&end_of_tx[0]);
+					  erasesignature(A5_signature);
+					  write_A5_signature(runtime_a5_write);
+					  erasesignature(runtime_a5_program);
+					  write_signature(runtime_a5_program);
+					  _JumpToProgram(FLASH_BACKUP_START_ADDR);
+					//  write_A5_signature(runtime_a5_program);
+					//  update_signature_switch(runtime_a5_write);
 
-								//  for(a = 0;a < 16;a++)
-								//	  _flash_file_param.f_magic_val2[a] = runtime_a5_write_data[a];
-								//  memcpy(&_flash_file_param.f_file2[0],"Application #2",strlen("Application #2"));
-								//  _flash_file_param.f_size2  = WRITE_BLOCK * (index - 1);
-								//  _flash_file_param.f_blocks2  = index - 1;
-								//  _flash_file_param.f_crc2  = cs;
-								//  _flash_file_param.f_crc2 = _flash_file_param.f_crc2;
-								//  _flash_file_param.f_blocks2 = size;
-								  if(_flash_file_param.f_blocks2 != (index - 1))
-								  {
-									  result = X_ERROR;
-									  return result;
-								  }
-
-								  if(_flash_file_param.f_crc2 != cs)
-								  {
-									  result = X_ERROR;
-									  return result;
-								  }
-
-								  erasesignature(A5_signature);
-								  write_A5_signature(runtime_a5_write);
-								  erasesignature(runtime_a5_program);
-								  write_signature(runtime_a5_program);
-								  _JumpToProgram(FLASH_BACKUP_START_ADDR);
-								//  write_A5_signature(runtime_a5_program);
-								//  update_signature_switch(runtime_a5_write);
-
-								  result = X_OK;
-								  end_of_handshake = true;
-								  break;
-					  case X_CAN:
-				  	  	  	  	  break;
-					  default:
-	                    		  break;
-			 }
-        }
+					  result = X_OK;
+					  end_of_handshake = true;
+					  break;
+		  case X_CAN:
+					  break;
+		  default:
+					  break;
+	 }
+}
   return result;
 }
 
@@ -1384,102 +1354,4 @@ static uint16_t xmodem_calc_crc_partial(uint8_t *data, uint16_t length,uint32_t 
     return crc;
 }
 
-#if 0
-uint32_t get_size_backup_A5(void)
-{
-	uint32_t size = 0;
-	uint8_t RxBuffer[40];
 
-	// Read backup_a5 signature.
-	flash_read(FLASH_BACKUP_A5_SIG_ADR,&RxBuffer[0],30);
-	size =     RxBuffer[20] +
-			  (RxBuffer[21] * 0x100) +
-			  (RxBuffer[22] * 0x10000) +
-			  (RxBuffer[23] * 0x1000000);
-
-    return size;
-}
-#endif
-
-#if 0
-uint32_t transfer_flash_runtime_A5(uint32_t start)
-{
-	uint32_t result = X_ERROR;
-	uint16_t cnt;
-
-
-	for(cnt = 0;cnt < _flash_file_param.f_blocks1;cnt++)
-	{
-		 flash_read(start + cnt * WRITE_BLOCK,&compare_block[0],WRITE_BLOCK);
-		 flash_transfer(FLASH_RUNTIME_START_ADDR + cnt * WRITE_BLOCK,cnt);
-	}
-
-	// Check data and cs.
-
-	// update signature.
-	erasesignature(A5_signature);
-	write_signature(runtime_a5_program);
-	erasesignature(runtime_a5_write);
-	/// Update runtime dat.  help help
-
-	// Reset CPU.
-	_JumpToProgram(FLASH_START_ADDR);
-
-	return result;
-}
-#endif
-
-#if 0
-void program_switcher(void)
-{
-	 uint32_t result;
-
-	 result = get_A5_signature();
-
-	switch(result)
-	{
-		case backup_a5_program: // backup_a5_program.
-								  _JumpToProgram(FLASH_BACKUP_START_ADDR);
-								break;
-		case runtime_a5_program: // runtime_a5_program.
-								result = a5_program_presence(runtime_a5_program);
-								if(result == X_ERROR)
-								{
-									erasesignature(A5_signature);
-									write_signature(backup_a5_program);
-									 _JumpToProgram(FLASH_BACKUP_START_ADDR);
-								}
-								else
-									 _JumpToProgram(FLASH_RUNTIME_START_ADDR);
-								break;
-		case runtime_a5_write:  // runtime_a5_write.
-								flasherasesection(FLASH_RUNTIME_START_ADDR,FLASH_RUNTIME_STORE);
-								result = transfer_flash_runtime_A5(FLASH_RUNTIME_STORE);
-								if(result == X_OK)
-								{
-									erasesignature(A5_signature);
-									write_signature(runtime_a5_program);
-									// move data from runtime_a5_write to runtime_a5_program
-									_flash_file_param.f_size1 = _flash_file_param.f_size2;
-									_flash_file_param.f_blocks1 = _flash_file_param.f_blocks2;
-									_flash_file_param.f_crc1 = _flash_file_param.f_crc2;
-
-									erasesignature(runtime_a5_program);
-									write_signature(runtime_a5_program);
-									_JumpToProgram(FLASH_RUNTIME_START_ADDR);
-								}
-								else
-								{
-									_JumpToProgram(FLASH_BACKUP_START_ADDR);
-								}
-								break;
-		default:
-								erasesignature(A5_signature);
-								write_signature(backup_a5_program);
-								erasesignature(runtime_a5_program);
-								erasesignature(runtime_a5_write);
-								_JumpToProgram(FLASH_BACKUP_START_ADDR);
-								break;
-	}
-}
-#endif
