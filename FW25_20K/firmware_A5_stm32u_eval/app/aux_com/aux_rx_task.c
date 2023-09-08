@@ -307,13 +307,15 @@ void aux_RxTask(void *para)
 
 	for (;;)
 	{
-		if (xQueueReceive(auxInQ, &aux_in_msg, aux_rx_to))
+  	    if (xQueueReceive(auxInQ, &aux_in_msg, aux_rx_to))
 		{
 			if (aux_in_msg.hdr.bit.type==MSG_TYPE_DEBUG_DATA_BLK)
 			{
 				if (aux_in_msg.buf)
 				{
-					if(rxFramer.frx)
+                 if (0)
+
+				//	if(rxFramer.frx)
 					{
 						pd=(uint8_t *)aux_in_msg.buf;
 
@@ -335,6 +337,7 @@ void aux_RxTask(void *para)
 #endif
 									if (pdFAIL==sendToAuxCmdInterp(cmdq, p, MAKE_MSG_HDRTYPE(0,MSG_SRC_AUX_DBRX,MSG_TYPE_CMD), portMAX_DELAY))
 									{
+										// ephraim
 										retMemBuf(p);
 									}
 
@@ -348,9 +351,11 @@ void aux_RxTask(void *para)
 
 						aux_rx_to=AUX_RX_TIMEOUT;
 					}
+
 					else
 					{
 						p=NULL;
+						// ephraim
 					}
 				}
 			}
@@ -626,58 +631,44 @@ void DEBUG_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
 	  if(huart->Instance==UART5)//DEBUG Aux
 	  {
-//    	  if(fota_mode == 1)
-//		  {
-//			   //Size = 65000;
-//    		  uart_receive(&aDbgRxBuffer[0], 1029);
-//    		  UartReadyRx = true;
-//    		//  return;
-//		  }
- //   	  else
-			   if(Size != sizeof(aDbgRxBuffer)/2U)//filter half complete events
-			   {
-					MSG_HDR msg;
-					signed portBASE_TYPE xHigherPriorityTaskWoken=0;
+		   if(Size != sizeof(aDbgRxBuffer)/2U)//filter half complete events
+		   {
+				MSG_HDR msg;
+				signed portBASE_TYPE xHigherPriorityTaskWoken=0;
 
-					msg.hdr.all=MAKE_MSG_HDRTYPE(0,MSG_SRC_ISR1,MSG_TYPE_DEBUG_DATA_BLK);
-					msg.data=Size;
-					msg.buf=aDbgRxBuffer;
+				msg.hdr.all=MAKE_MSG_HDRTYPE(0,MSG_SRC_ISR1,MSG_TYPE_DEBUG_DATA_BLK);
+				msg.data=Size;
+				msg.buf=aDbgRxBuffer;
 
-					if (!xQueueSendFromISR(auxInQ,&msg,&xHigherPriorityTaskWoken))
-					{
-						// Failure to send message with received buffer
-						Error_Handler((uint8_t *)__FILE__, __LINE__);
-					}
-
-				  /* Initializes Rx sequence using Reception To Idle event API.
-					 As DMA channel associated to UART Rx is configured as Circular,
-					 reception is endless.
-					 If reception has to be stopped, call to HAL_UART_AbortReceive() could be used.
-					 Use of HAL_UARTEx_ReceiveToIdle_DMA service, will generate calls to
-					 user defined HAL_UARTEx_RxEventCallback callback for each occurrence of
-					 following events :
-					 - DMA RX Half Transfer event (HT)
-					 - DMA RX Transfer Complete event (TC)
-					 - IDLE event on UART Rx line (indicating a pause is UART reception flow)
-				  */
-
-				  /* todo send message to rx framer task */
-
-				  if (HAL_OK != HAL_UARTEx_ReceiveToIdle_DMA(&huart5, aDbgRxBuffer, sizeof(aDbgRxBuffer)))
-				  {
+				if (!xQueueSendFromISR(auxInQ,&msg,&xHigherPriorityTaskWoken))
+				{
+					// Failure to send message with received buffer
 					Error_Handler((uint8_t *)__FILE__, __LINE__);
-				  }
+				}
 
-				  uart_receive(&aDbgRxBuffer[0], 1029);
-				  UartReadyRx = true;
-			   }
-		  }
-//		  else
-//		  {
-//				  uart_receive(&aDbgRxBuffer[0], 1029);
-//			      UartReadyRx = true;
-//		  }
-//	  }
+			  /* Initializes Rx sequence using Reception To Idle event API.
+				 As DMA channel associated to UART Rx is configured as Circular,
+				 reception is endless.
+				 If reception has to be stopped, call to HAL_UART_AbortReceive() could be used.
+				 Use of HAL_UARTEx_ReceiveToIdle_DMA service, will generate calls to
+				 user defined HAL_UARTEx_RxEventCallback callback for each occurrence of
+				 following events :
+				 - DMA RX Half Transfer event (HT)
+				 - DMA RX Transfer Complete event (TC)
+				 - IDLE event on UART Rx line (indicating a pause is UART reception flow)
+			  */
+
+			  /* todo send message to rx framer task */
+
+			  if (HAL_OK != HAL_UARTEx_ReceiveToIdle_DMA(&huart5, aDbgRxBuffer, sizeof(aDbgRxBuffer)))
+			  {
+				Error_Handler((uint8_t *)__FILE__, __LINE__);
+			  }
+
+			  uart_receive(&aDbgRxBuffer[0], 1029);
+			  UartReadyRx = true;
+		   }
+	  }
 }/* End of HAL_UARTEx_RxEventCallback */
 #endif
 

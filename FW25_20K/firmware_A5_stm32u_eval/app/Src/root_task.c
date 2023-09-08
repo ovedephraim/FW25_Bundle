@@ -222,7 +222,7 @@ void rootTask(void *para)
 	{
 		vTaskDelay(1000);
 
-		Led_SM();
+	//	Led_SM();
 
 		switch(charger_sm)
 		{

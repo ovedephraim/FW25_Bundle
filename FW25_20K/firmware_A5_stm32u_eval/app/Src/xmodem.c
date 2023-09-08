@@ -1205,6 +1205,11 @@ uint32_t get_ymodem(void)
 		//	 {
 		//		 timeout = 0;
 		//	 }
+		if(HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
+		{
+		  /* Refresh Error */
+		  Error_Handler((uint8_t *)__FILE__, __LINE__);
+		}
 	}
 
 	result = checkstring();
