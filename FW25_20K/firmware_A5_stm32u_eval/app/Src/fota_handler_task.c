@@ -354,6 +354,7 @@ int sendTofotaCmdInterp(uint8_t * buffer)
 							{
 								Transmit(X_NAK);
 							}
+							_fota_sm.f_timer = 0;
 						    break;
 			case f_x_stx:
 						//	memcpy(&abc[0],&buffer[0],1029);
@@ -381,10 +382,12 @@ int sendTofotaCmdInterp(uint8_t * buffer)
 								_fota_sm.fota = f_idle;
 								Transmit(X_NAK);
 							}
+							_fota_sm.f_timer = 0;
 						    break;
 			case f_x_eot:
-							_fota_sm.fota = f_idle;
 							Transmit(X_ACK);
+							_fota_sm.f_fota_ena = 0;
+							_fota_sm.fota = f_idle;
 						    break;
 			case f_error:
 				            Transmit(X_ACK);

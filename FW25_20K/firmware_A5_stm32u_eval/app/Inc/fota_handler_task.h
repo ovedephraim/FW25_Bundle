@@ -43,6 +43,7 @@ typedef enum fota_state
 
 typedef struct {
 	uint32_t f_fota_ena;
+	uint32_t f_timer;
 	fota_state fota;
 }fota_sm;
 

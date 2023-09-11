@@ -245,7 +245,14 @@ void rootTask(void *para)
 					 break;
 		}
 
-
+		if(_fota_sm.f_fota_ena == 1)
+		{
+			if(++_fota_sm.f_timer > 10)
+			{
+				Transmit(X_NAK);
+				_fota_sm.f_timer = 0;
+			}
+		}
 //		if(fota_mode == true)
 //		{
 //		//	aux_sendToAux("Enter Boot loader \r\n",20,0,1,DBG_AUX);

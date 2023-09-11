@@ -282,6 +282,7 @@ void aux_RxTask(void *para)
 	uint8_t *pd;
 	TickType_t aux_rx_to=portMAX_DELAY;
 
+
 	void *p;
 	struct sRxFramerParams framerParams;
 
@@ -363,8 +364,9 @@ void aux_RxTask(void *para)
 					{
 					//	p=NULL;
 						// ephraim
-						memcpy(&abc[0],&aux_in_msg.buf[0],DATA_CHUNK);
-						if((abc[0] != 0x02) && (abc[0] != 0x67))
+						//memcpy(&abc[0],&aux_in_msg.buf[0],DATA_CHUNK);
+						//if((abc[0] != 0x02) && (abc[0] != 0x67))
+						if((&aux_in_msg.buf[0] != 0x02) && (&aux_in_msg.buf[0] != 0x67))
 						{
 							p=NULL;
 						}
