@@ -43,6 +43,7 @@ led_sm     _led_sm;
 battery_limits _battery_limits;
 //charge_sm  _charge_sm;
 
+
 uint8_t response_ok[] =  "GOOD packet number xxxx received \r\n";
 uint8_t response_bad[] = "BAD  Packet number xxxx received \r\n";
 uint8_t command_wait[] = "\r\n Waiting for command !!! \r\n";
@@ -62,7 +63,6 @@ int16_t temp_datax[3];
 uint8_t charger_sm = 0;
 
 uint32_t xmodem_on = false;
-uint8_t fota_mode = false;
 
 
 typedef void (*pFunction)(void);

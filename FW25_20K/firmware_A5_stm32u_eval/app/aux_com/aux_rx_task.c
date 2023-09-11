@@ -28,6 +28,7 @@
 
 #include "stm32u5xx_hal_uart_ex.h"
 #include "cmd_handler_task.h"
+#include "fota_handler_task.h"
 #include "main.h"
 #include "sys_conf.h"
 
@@ -45,16 +46,20 @@ extern QueueHandle_t cmdq;
 extern void aux_TxTask(void *para);
 extern void aux_RxTask(void *para);
 
+extern fota_sm _fota_sm;
+
 extern xQueueHandle auxOutQ;
 extern MEMBUF_POOL auxdbgBufPool;
 extern MEMBUF_POOL auxdbgbigBufPool;
 
 extern uint8_t UartReadyTx;
 extern uint8_t UartReadyRx;
-extern uint8_t fota_mode;
+
 
 xQueueHandle auxInQ=NULL;
 struct sRxFramer rxFramer;
+
+uint8_t abc[DATA_CHUNK];
 
 DMA_HandleTypeDef handle_GPDMA1_Channel0;
 DMA_HandleTypeDef handle_GPDMA1_Channel1;
@@ -302,6 +307,7 @@ void aux_RxTask(void *para)
 	/* start debug/BT/data aux continuous reception */
 	startAuxReception(NULL,DBG_AUX);
 
+
     char * str="\r\n[DEBUG AUX] started RX task \r\n";
     aux_sendToAux(str,strlen(str),0,1,DBG_AUX);
 
@@ -313,9 +319,9 @@ void aux_RxTask(void *para)
 			{
 				if (aux_in_msg.buf)
 				{
-                 if (0)
-
-				//	if(rxFramer.frx)
+                 if(_fota_sm.f_fota_ena == 0)
+                 {
+					if(rxFramer.frx)
 					{
 						pd=(uint8_t *)aux_in_msg.buf;
 
@@ -346,7 +352,8 @@ void aux_RxTask(void *para)
 								{
 									retMemBuf(p);
 								}
-							}
+							 }
+						  }
 						}
 
 						aux_rx_to=AUX_RX_TIMEOUT;
@@ -354,8 +361,20 @@ void aux_RxTask(void *para)
 
 					else
 					{
-						p=NULL;
+					//	p=NULL;
 						// ephraim
+						memcpy(&abc[0],&aux_in_msg.buf[0],DATA_CHUNK);
+						if((abc[0] != 0x02) && (abc[0] != 0x67))
+						{
+							p=NULL;
+						}
+
+						if (pdFAIL==sendTofotaCmdInterp(aux_in_msg.buf))
+//						if (pdFAIL==sendTofotaCmdInterp(cmdq, p, MAKE_MSG_HDRTYPE(0,MSG_SRC_AUX_DBRX,MSG_TYPE_CMD), portMAX_DELAY))
+						{
+							// ephraim
+							retMemBuf(p);
+						}
 					}
 				}
 			}
@@ -665,7 +684,7 @@ void DEBUG_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 				Error_Handler((uint8_t *)__FILE__, __LINE__);
 			  }
 
-			  uart_receive(&aDbgRxBuffer[0], 1029);
+			  uart_receive(&aDbgRxBuffer[0], DATA_CHUNK);
 			  UartReadyRx = true;
 		   }
 	  }

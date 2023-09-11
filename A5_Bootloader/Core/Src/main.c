@@ -307,7 +307,7 @@ int main(void)
 	HAL_UART_MspInit(&huart5);
 	__HAL_UART_ENABLE_IT( &huart5, UART_IT_RXNE);
 //	uart_receive(&compare_block[0], 40);
-    uart_receive(&aRxBuffer[0],1029);
+    uart_receive(&aRxBuffer[0],DATA_CHUNK);
 
 //    program_switcher();
 
@@ -524,7 +524,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 	   }
 	   else
 	   {
-		   uart_receive(&aRxBuffer[0], 1029);
+		   uart_receive(&aRxBuffer[0], DATA_CHUNK);
 	   }
        UartReadyRx = true; //SET;
 	}

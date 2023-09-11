@@ -28,6 +28,7 @@
 #include "auxcmd.h"//error codes
 #include "channel_manager_task.h"
 #include "cmd_handler_task.h"
+#include "fota_handler_task.h"
 #include "main.h"
 #include "periodic_dispatcher_task.h"
 #include "rtc.h" //RTC_Init(void)
@@ -49,7 +50,7 @@ extern uint8_t aDbgRxBuffer[];
 
 extern int16_t temp_datax[];
 extern uint8_t charger_sm;
-extern uint8_t fota_mode;
+extern fota_sm _fota_sm;
 //extern uint8_t aRxBuffer[];
 
 //new queue ad here
@@ -176,6 +177,8 @@ void rootTask(void *para)
 #endif
 
 
+	_fota_sm.f_fota_ena = 0;
+
    /* start aux tasks */
    rv=startAuxTasks(\
 		   STACK_SIZE_FOR_AUX_TX_TASK,
@@ -243,21 +246,21 @@ void rootTask(void *para)
 		}
 
 
-		if(fota_mode == true)
-		{
-		//	aux_sendToAux("Enter Boot loader \r\n",20,0,1,DBG_AUX);
-		//	HAL_UART_MspDeInit(&huart5);
-		//	vTaskDelay(100);
-		//	HAL_UART5Only_MspInit(&huart5);
-		//	__HAL_UART_ENABLE_IT( &huart5, UART_IT_RXNE);
-		//	uart_receive(&aDbgRxBuffer[0],20);
-
-			result = get_ymodem();
-			if(result != 0)
-			{
-				fota_mode = false;
-			}
-		}
+//		if(fota_mode == true)
+//		{
+//		//	aux_sendToAux("Enter Boot loader \r\n",20,0,1,DBG_AUX);
+//		//	HAL_UART_MspDeInit(&huart5);
+//		//	vTaskDelay(100);
+//		//	HAL_UART5Only_MspInit(&huart5);
+//		//	__HAL_UART_ENABLE_IT( &huart5, UART_IT_RXNE);
+//		//	uart_receive(&aDbgRxBuffer[0],20);
+//
+//			result = get_ymodem();
+//			if(result != 0)
+//			{
+//				fota_mode = false;
+//			}
+//		}
 
 
 #if 0

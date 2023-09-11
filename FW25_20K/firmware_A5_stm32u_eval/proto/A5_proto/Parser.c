@@ -23,6 +23,7 @@
 #include "hw_tests.h"
 
 #include "channel_manager_task.h"
+#include "fota_handler_task.h"
 #include "hw_tests.h"
 #include "rtc.h"
 #include "sys_errno.h"
@@ -48,7 +49,7 @@ typedef int16_t Int16;
 
 static char PARSER_Response[MAX_RESPONCE_TO_CMD_RECORD_SIZE];
 extern uint8_t charger_sm;
-extern uint8_t fota_mode;
+extern fota_sm _fota_sm;
 
 
 Bool PARSER_Str2UInt16(char *str, UInt16 *ch)
@@ -236,13 +237,18 @@ bool PARSER_ParseCommand(char *cmd, PACKETBUF_HDR **resp, MEMBUF_POOL *pool)
 	case '~':
 				if((*strs[1] == '=') && (*strs[2] == '1'))
 				{
-					fota_mode = true;
+					_fota_sm.f_fota_ena = 1;
+					char  str[1] = {0x06};
+					aux_sendToAux(&str[0],1,0,1,DBG_AUX);
+					_fota_sm.fota = f_header;
+				//	fota_mode = true;
 				//	char * str="\r\n  Start FOTA \r\n";
 				//	aux_sendToAux(str,strlen(str),0,1,DBG_AUX);
 				}
 				else
 				{
-					fota_mode = 0;
+					_fota_sm.f_fota_ena = 0;
+				//	fota_mode = 0;
 				//	char * str="\r\n  Stop FOTA \r\n";
 				//	aux_sendToAux(str,strlen(str),0,1,DBG_AUX);
 				}

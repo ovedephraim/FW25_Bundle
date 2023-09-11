@@ -96,6 +96,8 @@ extern "C" {
 #define SCL_NRG_Pin GPIO_PIN_10
 #define CAPSENSE_EN_Pin GPIO_PIN_2
 
+#define DATA_CHUNK    (1024 + 5)
+
 /*
 typedef enum leds_state
 {

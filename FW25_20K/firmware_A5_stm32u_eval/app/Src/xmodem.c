@@ -506,14 +506,11 @@ uint32_t uart_receive(uint8_t *data, uint16_t length)
 
 void uart_transmit_ch(uint8_t data)
 {
-    //aTxBuffer[0] = data;
 	uint8_t a[2];
 
 	a[0] = data;
 
- //   HAL_UART_Transmit_IT(&huart5, (uint8_t *)aTxBuffer, 1);
     HAL_UART_Transmit_IT(&huart5, (uint8_t *)a, 1);
-
 }
 
 uint32_t Transmit(uint8_t k)
@@ -526,6 +523,7 @@ uint32_t Transmit(uint8_t k)
 
 	 return result;
 }
+
 
 uint32_t Transmit_result(uint8_t k)
 {
@@ -830,9 +828,9 @@ uint32_t checkstring(void)
 	uint32_t result = X_OK;
 	int16_t crc_received,crc_calculated;
 
-	    //uint8_t abc[1029];
+	    uint8_t abc[DATA_CHUNK];
 
-	    //memcpy(&abc[0],&aDbgRxBuffer[0],1029);
+	    memcpy(&abc[0],&aDbgRxBuffer[0],DATA_CHUNK);
 
 		if(aDbgRxBuffer[0] != X_STX)
 		{
@@ -853,12 +851,12 @@ uint32_t checkstring(void)
 
 	    //abc[12] = 0X33;
 
-	    if(crc_received != crc_calculated)
-	    {
-	      //	transmit_notification(&crc_bad[0]);
-		  result = X_ERROR;
-		  return result;
-		}
+//	    if(crc_received != crc_calculated)
+//	    {
+//	      //	transmit_notification(&crc_bad[0]);
+//		  result = X_ERROR;
+//		  return result;
+//		}
 	 return result;
 }
 
@@ -1110,7 +1108,7 @@ void ack_mimic(void)
 {
 	  uint32_t timeout = 0;;
 
-	  uart_receive(&aDbgRxBuffer[0], 1029);
+	  uart_receive(&aDbgRxBuffer[0], DATA_CHUNK);
 	  while(1)
 	  {
 		if(UartReadyRx == true)
@@ -1190,7 +1188,7 @@ uint32_t get_ymodem(void)
   aDbgRxBuffer[0] = 0x11;
   // Ack for Y_HEADER.
   Transmit(X_ACK);
-  uart_receive(&aDbgRxBuffer[0], 1029);
+  uart_receive(&aDbgRxBuffer[0], DATA_CHUNK);
   UartReadyRx = false;
   //  trasmit_answer(&response_ok[0],0);
 

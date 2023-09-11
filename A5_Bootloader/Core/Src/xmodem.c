@@ -1048,7 +1048,7 @@ uint32_t get_xmodem(void)
   uint16_t cs = 0;
 
   /* Get the header from UART. */
-   result = uart_receive(&aRxBuffer[0], 1029);
+   result = uart_receive(&aRxBuffer[0], DATA_CHUNK);
 
   	/* Loop until there isn't any error (or until we jump to the user application). */
   UartReadyRx = false;
@@ -1069,7 +1069,7 @@ uint32_t get_xmodem(void)
 			else
 			{
 				header = 0x11;
-				uart_receive(&aRxBuffer[0],1029);
+				uart_receive(&aRxBuffer[0],DATA_CHUNK);
 				Transmit(X_NAK);
 				LongDelay();
 				UartReadyRx = false;
@@ -1405,7 +1405,7 @@ uint32_t get_ymodem(void)
 	  // Erase top of flash.
 	  flasherase(0);
 	  xmodem_on = true;
-	  result = uart_receive(&aRxBuffer[0], 1029);
+	  result = uart_receive(&aRxBuffer[0], DATA_CHUNK);
 	  trasmit_answer(&response_ok[0],0);
 
 		/* The header can be: SOH, STX, EOT and CAN. */

@@ -32,7 +32,7 @@
 //===================================================================================|
 //===================== uart mode/baud rate configuration ===========================|
 
-#define DEBUG_AUX_BAUD              (115200) // 921600
+#define DEBUG_AUX_BAUD              (921600)
 #define DEF_BT_BAUD                 (115200)
 #define OPR_BT_BAUD                 (230400)
 
