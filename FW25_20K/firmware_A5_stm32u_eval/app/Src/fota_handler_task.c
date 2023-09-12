@@ -111,7 +111,7 @@ void fota_handler_Task(void *para)
 		}
 }
 
-int startfotaHndlTask(QueueHandle_t *cmdQ, TaskHandle_t *cmdT, const char * const pcName, uint16_t usStackDepth, UBaseType_t prio)
+int startFotaHndlTask(QueueHandle_t *fota, TaskHandle_t *cmdT, const char * const pcName, uint16_t usStackDepth, UBaseType_t prio)
 {
 	QueueHandle_t q;
 	TaskHandle_t t;
@@ -119,8 +119,8 @@ int startfotaHndlTask(QueueHandle_t *cmdQ, TaskHandle_t *cmdT, const char * cons
 	/* create queue */
 	if ((q = xQueueCreate(24,sizeof(MSG_HDR))) == NULL)
 	{
-		if (cmdQ)
-			*cmdQ=NULL;
+		if (fota)
+			*fota=NULL;
 		if (cmdT)
 			*cmdT=NULL;
 		return pdFAIL;
@@ -129,15 +129,15 @@ int startfotaHndlTask(QueueHandle_t *cmdQ, TaskHandle_t *cmdT, const char * cons
 	if (pdFAIL == xTaskCreate(fota_handler_Task, pcName, usStackDepth, q, prio, &t))
 	{
 		vQueueDelete(q);
-		if (cmdQ)
-			*cmdQ=NULL;
+		if (fota)
+			*fota=NULL;
 		if (cmdT)
 			*cmdT=NULL;
 		return pdFAIL;
 	}
 	vQueueAddToRegistry( q, pcName);
-	if (cmdQ)
-		*cmdQ=q;
+	if (fota)
+		*fota=q;
 	if (cmdT)
 		*cmdT=t;
 	return pdPASS;
@@ -279,14 +279,14 @@ uint32_t checkmainchunk(uint8_t * buffer)
 
 	if(buffer[0] != X_STX)
 	{
-	  Transmit(0x16);
+	//  Transmit(0x16);
 	  result = 0xff;
 	  return result;
 	}
 
 	if((buffer[1] + buffer[2]) != 0xff)
 	{
-	  Transmit(0x17);
+	//  Transmit(0x17);
 	  result = 0xff;
 	  return result;
 	}
@@ -301,7 +301,7 @@ uint32_t checkmainchunk(uint8_t * buffer)
 	if(crc_received != crc_calculated)
 	{
 	  //	transmit_notification(&crc_bad[0]);
-	  Transmit(0x18);
+	//  Transmit(0x18);
 	  result = 0xff;
 	  return result;
 	}
@@ -313,12 +313,12 @@ int sendTofotaCmdInterp(uint8_t * buffer)
 {
 //	MSG_HDR msg;
 	uint32_t result;
-//	uint8_t abc[DATA_CHUNK];
+	uint8_t abc[DATA_CHUNK];
     static uint8_t cnt = 0;
 
 	if(_fota_sm.f_fota_ena == 1)
 	{
-//		memcpy(&abc[0],&buffer[0],DATA_CHUNK);
+		memcpy(&abc[0],&buffer[0],DATA_CHUNK);
 		switch(buffer[0])
 		{
 			case Y_HEADER:
@@ -390,7 +390,7 @@ int sendTofotaCmdInterp(uint8_t * buffer)
 							_fota_sm.fota = f_idle;
 						    break;
 			case f_error:
-				            Transmit(X_ACK);
+				            Transmit(X_NAK);
 				            HAL_Delay(200);
 //							Transmit(X_NAK);
 //							_fota_sm.f_fota_ena = 0;

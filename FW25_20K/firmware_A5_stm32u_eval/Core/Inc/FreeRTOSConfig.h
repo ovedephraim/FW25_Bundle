@@ -78,7 +78,7 @@ function. */
 #define configCPU_CLOCK_HZ                      ( SystemCoreClock )
 #define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
 
-#define configMINIMAL_STACK_SIZE                ( ( uint16_t ) 1024 )
+#define configMINIMAL_STACK_SIZE                ( ( uint16_t ) 2048 ) // ephraim 1024
 #define configTOTAL_HEAP_SIZE                   ( ( size_t ) ( 300 * 2048 ) )//8
 #define configMAX_TASK_NAME_LEN                 ( 16 )
 #define configUSE_TRACE_FACILITY                1

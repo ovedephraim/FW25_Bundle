@@ -28,6 +28,10 @@
 #define STACK_SIZE_FOR_CMDH_TASK       (configMINIMAL_STACK_SIZE + 10)
 #define PRI_FOR_CMDH_TASK              (4)
 
+#define STACK_SIZE_FOR_FOTA_TASK       (configMINIMAL_STACK_SIZE + 1024)
+#define PRI_FOR_FOTA_TASK              (4)
+
+
 #define STACK_SIZE_FOR_DISP_TASK       (configMINIMAL_STACK_SIZE + 10)
 #define PRI_FOR_DISP_TASK              (4)
 

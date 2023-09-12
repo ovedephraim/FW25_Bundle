@@ -58,6 +58,7 @@ QueueHandle_t cmdq=NULL;
 QueueHandle_t dispq=NULL;
 QueueHandle_t chanmngq=NULL;
 QueueHandle_t btmngq=NULL;
+QueueHandle_t fota=NULL;
 
 /**
  * @brief system_init
@@ -190,7 +191,7 @@ void rootTask(void *para)
 
    /* create BT  tasks */
    rv=startBTMngTask(\
- 		   &btmngq, NULL, "btmng",
+ 		   &btmngq, NULL,"btmng",
 		   STACK_SIZE_FOR_BTMN_TASK,
 		   PRI_FOR_BTMN_TASK);
    if(rv !=pdPASS)
@@ -199,14 +200,21 @@ void rootTask(void *para)
    /* Create  application tasks and
       set same priority for every one */
    rv=startCmdHndlTask(\
-		   &cmdq, NULL,   "cmdh",
+		   &cmdq, NULL,"cmdh",
 		   STACK_SIZE_FOR_CMDH_TASK,
 		   PRI_FOR_CMDH_TASK);
    if(rv !=pdPASS)
 	   Error_Handler((uint8_t *)__FILE__, __LINE__);
 
+   rv=startFotaHndlTask(\
+   		   &fota, NULL,"fota",
+   		   STACK_SIZE_FOR_FOTA_TASK,
+   		   PRI_FOR_FOTA_TASK);
+      if(rv !=pdPASS)
+   	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+
    rv=startDispatcherTask(\
-		   &dispq, NULL,  "disp",
+		   &dispq, NULL,"disp",
 		   STACK_SIZE_FOR_DISP_TASK,
 		   PRI_FOR_DISP_TASK);
    if(rv !=pdPASS)
@@ -253,21 +261,6 @@ void rootTask(void *para)
 				_fota_sm.f_timer = 0;
 			}
 		}
-//		if(fota_mode == true)
-//		{
-//		//	aux_sendToAux("Enter Boot loader \r\n",20,0,1,DBG_AUX);
-//		//	HAL_UART_MspDeInit(&huart5);
-//		//	vTaskDelay(100);
-//		//	HAL_UART5Only_MspInit(&huart5);
-//		//	__HAL_UART_ENABLE_IT( &huart5, UART_IT_RXNE);
-//		//	uart_receive(&aDbgRxBuffer[0],20);
-//
-//			result = get_ymodem();
-//			if(result != 0)
-//			{
-//				fota_mode = false;
-//			}
-//		}
 
 
 #if 0
