@@ -35,7 +35,7 @@
 #include "sys_errno.h"//error codes
 #include "io_ctl.h"//io_ctl_enable_power
 #include "misc.h"
-#include "xmodem.h"
+//#include "xmodem.h"
 #include "lp55281.h"
 
 extern IWDG_HandleTypeDef hiwdg;

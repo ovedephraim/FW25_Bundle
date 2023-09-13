@@ -42,6 +42,7 @@
 #define AUX_RX_TIMEOUT	    100 //portMAX_DELAY
 
 extern QueueHandle_t cmdq;
+extern QueueHandle_t fota;
 
 extern void aux_TxTask(void *para);
 extern void aux_RxTask(void *para);
@@ -347,7 +348,6 @@ void aux_RxTask(void *para)
 										// ephraim
 										retMemBuf(p);
 									}
-
 								}
 								else
 								{
@@ -366,16 +366,24 @@ void aux_RxTask(void *para)
 						// ephraim
 						//memcpy(&abc[0],&aux_in_msg.buf[0],DATA_CHUNK);
 						//if((abc[0] != 0x02) && (abc[0] != 0x67))
-						if((&aux_in_msg.buf[0] != 0x02) && (&aux_in_msg.buf[0] != 0x67))
+						if (aux_in_msg.buf)
 						{
-							p=NULL;
-						}
+						   if(rxFramer.frx)
+						   {
+							   	pd=(uint8_t *)aux_in_msg.buf;
 
-						if (pdFAIL==sendTofotaCmdInterp(aux_in_msg.buf))
-//						if (pdFAIL==sendTofotaCmdInterp(cmdq, p, MAKE_MSG_HDRTYPE(0,MSG_SRC_AUX_DBRX,MSG_TYPE_CMD), portMAX_DELAY))
-						{
-							// ephraim
-							retMemBuf(p);
+								if((&pd[0] != 0x02) && (&pd[0] != 0x67)) // pd was aux_in_msg.buf
+								{
+								//	p=NULL;
+								}
+
+								if (pdFAIL==sendTofotaCmdInterp(pd))  // pd was aux_in_msg.buf
+						//		if (pdFAIL==sendTofotaCmdInterp(fota, p, MAKE_MSG_HDRTYPE(0,MSG_SRC_AUX_DBRX,MSG_TYPE_CMD), portMAX_DELAY))
+								{
+									// ephraim
+									retMemBuf(p);
+								}
+						  }
 						}
 					}
 				}
@@ -686,6 +694,7 @@ void DEBUG_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 				Error_Handler((uint8_t *)__FILE__, __LINE__);
 			  }
 
+			  // ephraim
 			  uart_receive(&aDbgRxBuffer[0], DATA_CHUNK);
 			  UartReadyRx = true;
 		   }

@@ -26,7 +26,7 @@
 #include "io_ctl.h"
 #include "auxcmd.h"
 #include "misc.h"
-#include "xmodem.h"
+//#include "xmodem.h"
 #include "lp55281.h"
 
 static void SystemClock_Config(void);
