@@ -712,13 +712,13 @@ int sendTofotaCmdInterp(uint8_t * buffer)
 {
 //	MSG_HDR msg;
 	uint32_t result;
-	uint8_t abc[DATA_CHUNK];
+//	uint8_t abc[DATA_CHUNK];
 	static uint8_t cnt = 0;
 //	static uint8_t index = 0;
 
 	if(_fota_sm.f_fota_ena == 1)
 	{
-		memcpy(&abc[0],&buffer[0],DATA_CHUNK);
+	//	memcpy(&abc[0],&buffer[0],DATA_CHUNK);
 	//	switch(&packet[0])
 		switch(buffer[0])
 		{
@@ -800,6 +800,7 @@ int sendTofotaCmdInterp(uint8_t * buffer)
 						    break;
 			case f_x_eot:
 							Transmit(X_ACK);
+							HAL_Delay(200);
 							_fota_sm.f_fota_ena = 0;
 							_fota_sm.fota = f_idle;
 

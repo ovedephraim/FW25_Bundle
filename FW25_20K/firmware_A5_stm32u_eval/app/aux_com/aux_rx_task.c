@@ -354,38 +354,76 @@ void aux_RxTask(void *para)
 									retMemBuf(p);
 								}
 							 }
-						  }
+					     }
+				     }
+				    aux_rx_to=AUX_RX_TIMEOUT;
+			     }
+                 else
+				 {
+                	 if(rxFramer.frx)
+                	 {
+                	 	 pd=(uint8_t *)aux_in_msg.buf;
+
+ //               	 						buff_len=aux_in_msg.data;
+
+//                	 						for (buff_idx=0; buff_idx<buff_len; buff_idx++)
+//                	 						{
+//                	 							p=(*(rxFramer.frx))(&rxFramer, pd[buff_idx], NULL);
+//                	 							if (p)
+//                	 							{
+//                	 								if (((PACKETBUF_HDR *)p)->format==A4_PROTO_FORMAT)
+//                	 								{
+                	 									if (pdFAIL==sendTofotaCmdInterp(pd))  // pd was aux_in_msg.buf
+                	 									{
+                	 										// ephraim
+                	 										retMemBuf(p);
+                	 									}
+                	 								}
+                	 								else
+                	 								{
+                	 									retMemBuf(p);
+                	 								}
+//                	 							 }
+//                	 					     }
+//                	 				     }
+//                	 				    aux_rx_to=AUX_RX_TIMEOUT;
+
+
+
+//
+//
+//
+//					//	p=NULL;
+//						// ephraim
+//						//memcpy(&abc[0],&aux_in_msg.buf[0],DATA_CHUNK);
+//						//if((abc[0] != 0x02) && (abc[0] != 0x67))
+//						if (aux_in_msg.buf)
+//						{
+//						   if(rxFramer.frx)
+//						   {
+//							   	pd=(uint8_t *)aux_in_msg.buf;
+//
+//								if((&pd[0] != 0x02) && (&pd[0] != 0x67)) // pd was aux_in_msg.buf
+//								{
+//								//	p=NULL;
+//								}
+//
+//								if (pdFAIL==sendTofotaCmdInterp(pd))  // pd was aux_in_msg.buf
+//						        //		if (pdFAIL==sendTofotaCmdInterp(fota, p, MAKE_MSG_HDRTYPE(0,MSG_SRC_AUX_DBRX,MSG_TYPE_CMD), portMAX_DELAY))
+//								{
+//									// ephraim
+//									//retMemBuf(p);
+//								}
+//						  }
+////						   else
+////						   {
+////							   // ephraim
+////							  retMemBuf(p);
+////						   }
+                	        aux_rx_to=AUX_RX_TIMEOUT * 10;
 						}
+//					}
 
-						aux_rx_to=AUX_RX_TIMEOUT;
-					}
-
-					else
-					{
-					//	p=NULL;
-						// ephraim
-						//memcpy(&abc[0],&aux_in_msg.buf[0],DATA_CHUNK);
-						//if((abc[0] != 0x02) && (abc[0] != 0x67))
-						if (aux_in_msg.buf)
-						{
-						   if(rxFramer.frx)
-						   {
-							   	pd=(uint8_t *)aux_in_msg.buf;
-
-								if((&pd[0] != 0x02) && (&pd[0] != 0x67)) // pd was aux_in_msg.buf
-								{
-								//	p=NULL;
-								}
-
-								if (pdFAIL==sendTofotaCmdInterp(pd))  // pd was aux_in_msg.buf
-						//		if (pdFAIL==sendTofotaCmdInterp(fota, p, MAKE_MSG_HDRTYPE(0,MSG_SRC_AUX_DBRX,MSG_TYPE_CMD), portMAX_DELAY))
-								{
-									// ephraim
-									retMemBuf(p);
-								}
-						  }
-						}
-					}
 				}
 			}
 			else //MSG_TYPE_BT_DATA_BLK
