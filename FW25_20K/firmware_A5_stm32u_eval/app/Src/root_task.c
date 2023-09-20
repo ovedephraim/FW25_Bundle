@@ -29,6 +29,8 @@
 #include "channel_manager_task.h"
 #include "cmd_handler_task.h"
 #include "fota_handler_task.h"
+#include "leds_handler_task.h"
+#include "fuelgauge_handler_task.h"
 #include "main.h"
 #include "periodic_dispatcher_task.h"
 #include "rtc.h" //RTC_Init(void)
@@ -236,38 +238,18 @@ void rootTask(void *para)
          if(rv !=pdPASS)
       	   Error_Handler((uint8_t *)__FILE__, __LINE__);
 
-//   rv=startFuelgaugeHndlTask(\
-//			   &fuelgauge, NULL,"fuelgauge",
-//			   STACK_SIZE_FOR_FUELGAUGE_TASK,
-//			   PRI_FOR_FUELGAUGE_TASK);
-//		  if(rv !=pdPASS)
-//		   Error_Handler((uint8_t *)__FILE__, __LINE__);
+   rv=startFuelgaugeHndlTask(\
+			   &fuelgauge, NULL,"fuelgauge",
+			   STACK_SIZE_FOR_FUELGAUGE_TASK,
+			   PRI_FOR_FUELGAUGE_TASK);
+		  if(rv !=pdPASS)
+		   Error_Handler((uint8_t *)__FILE__, __LINE__);
 
    aux_sendToAux(get_sw_ver_banner,strlen(get_sw_ver_banner),0,1,2);
 
 	for (;;)
 	{
 		vTaskDelay(1000);
-
-	//	Led_SM();
-
-		switch(charger_sm)
-		{
-			case 0 :
-			         break;
-			case 1 :
-					 if(++counter == 3)
-					 {
-						counter = 0;
-						BatterySuperviser();
-					   // ChargeState();
-					 }
-					 break;
-			case 2 :
-				     BatterySuperviser();
-				     charger_sm = 0;
-					 break;
-		}
 
 		if(_fota_sm.f_fota_ena == 1)
 		{

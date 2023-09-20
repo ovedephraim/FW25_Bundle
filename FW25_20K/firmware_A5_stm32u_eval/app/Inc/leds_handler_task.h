@@ -1,6 +1,6 @@
 /**************************************************************************//**
- * @file cmd_task.h
- * @brief Command interpreter task
+ * @file leds_handler_task.h
+ * @brief Leds  task
  *
  * @version 0.0.1
  * @date 20.10.2015
@@ -8,8 +8,8 @@
  * @section License
  * <b>(C) Copyright 2022 Atlasense Ltd., http://www.atlasesne.com </b>
 */
-#ifndef _FOTA_HANDLER_TASK_H
-#define _FOTA_HANDLER_TASK_H
+#ifndef _LEDS_HANDLER_TASK_H
+#define _LEDS_HANDLER_TASK_H
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -21,19 +21,8 @@
 
 
 
-
-#define UART_OK		0
-#define UART_ERROR	0xff
-#define UART_TIMEOUT		100
-#define WRITE_BLOCK			1024
-
-
-
 int startLedsHndlTask(QueueHandle_t *leds, TaskHandle_t *cmdT, const char * const pcName, uint16_t usStackDepth, UBaseType_t prio);
 void leds_handler_Task(void *para);
-//int sendTofotaCmdInterp(QueueHandle_t q, void *packet, uint16_t hdr, uint32_t timeout);
-int sendToledsCmdInterp(void);
-
 
 
 
@@ -42,4 +31,4 @@ int sendToledsCmdInterp(void);
 }
 #endif
 
-#endif /* _FOTA_HANDLER_TASK_H */
+#endif /* _LEDS_HANDLER_TASK_H */
