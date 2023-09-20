@@ -190,7 +190,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 	  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
       /* USART2 interrupt Init */
-      HAL_NVIC_SetPriority(UART5_IRQn, 0, 0);
+      HAL_NVIC_SetPriority(UART5_IRQn, 11, 0);  // ephraim
       HAL_NVIC_EnableIRQ(UART5_IRQn);
     /* USER CODE BEGIN USART2_MspInit 1 */
 

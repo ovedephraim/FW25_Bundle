@@ -83,7 +83,8 @@ typedef struct {
 #define WRITE_BLOCK			1024
 
 
-int startfFotaHndlTask(QueueHandle_t *cmdQ, TaskHandle_t *cmdT, const char * const pcName, uint16_t usStackDepth, UBaseType_t prio);
+
+int startFotaHndlTask(QueueHandle_t *fota, TaskHandle_t *cmdT, const char * const pcName, uint16_t usStackDepth, UBaseType_t prio);
 void fota_handler_Task(void *para);
 //int sendTofotaCmdInterp(QueueHandle_t q, void *packet, uint16_t hdr, uint32_t timeout);
 int sendTofotaCmdInterp(uint8_t * buffer);

@@ -714,7 +714,7 @@ int sendTofotaCmdInterp(uint8_t * buffer)
 	uint32_t result;
 	uint8_t abc[DATA_CHUNK];
 	static uint8_t cnt = 0;
-//	static uint8_t index = 0;
+	static uint16_t index = 0;
 
 	if(_fota_sm.f_fota_ena == 1)
 	{
@@ -751,10 +751,10 @@ int sendTofotaCmdInterp(uint8_t * buffer)
 								// Erase top of flash.
 								//flasherase(0);
 
-
 								_fota_sm.fota = f_x_stx;
 								Transmit(X_ACK);
 								HAL_Delay(200);
+								index = 0;
 							}
 							else
 							{
@@ -785,7 +785,7 @@ int sendTofotaCmdInterp(uint8_t * buffer)
 								//flash_transfer(FLASH_RUNTIME_STORE,index);
 								//  flash_write(index);
 					         	///		flash_read(FLASH_BACKUP_START_ADDR + index * WRITE_BLOCK,&compare_block[0],WRITE_BLOCK);
-
+								index++;
 								_fota_sm.fota = f_x_stx;
 								Transmit(X_ACK);
 								HAL_Delay(200);

@@ -188,11 +188,11 @@ int main(void)
 	LP55281_Init();
 	LP55281_reset();
 
-	led('4','B',0x48);
-	led('1','R',0x48);
+//	led('4','B',0x48);
+//	led('1','R',0x48);
 
 
-    _led_sm.led = l_idle;//l_seleftest_ok;//l_selftest;  //l_drain;  // l_idle
+    _led_sm.led = l_seleftest_fail;//l_seleftest_ok;//l_selftest;  //l_drain;  // l_idle
 
 
 	/* OS initialization */

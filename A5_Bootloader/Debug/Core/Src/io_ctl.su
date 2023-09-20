@@ -1,2 +1,0 @@
-../Core/Src/io_ctl.c:26:6:io_ctl_enable_power	8	static
-../Core/Src/io_ctl.c:68:6:io_ctl_gpio_init	56	static

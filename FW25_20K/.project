@@ -3,6 +3,7 @@
 	<name>A5-Embedded</name>
 	<comment></comment>
 	<projects>
+		<project>firmware_A5_stm32u_eval</project>
 	</projects>
 	<buildSpec>
 	</buildSpec>

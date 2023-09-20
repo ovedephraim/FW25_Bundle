@@ -56,6 +56,8 @@
 #define X_C  	0x43	// ((uint8_t)0x43u)  /**< ASCII "C" to notify the host we want to use CRC16. */
 #define Y_HEADER 0x67
 
+#define DATA_CHUNK   1029
+
 
 /* Status report for the functions. */
 typedef enum {

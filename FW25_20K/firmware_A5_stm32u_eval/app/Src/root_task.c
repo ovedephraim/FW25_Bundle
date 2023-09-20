@@ -59,6 +59,8 @@ QueueHandle_t dispq=NULL;
 QueueHandle_t chanmngq=NULL;
 QueueHandle_t btmngq=NULL;
 QueueHandle_t fota=NULL;
+QueueHandle_t leds=NULL;
+QueueHandle_t fuelgauge=NULL;
 
 /**
  * @brief system_init
@@ -226,6 +228,20 @@ void rootTask(void *para)
 		   PRI_FOR_CHAN_TASK);
    if(rv !=pdPASS)
 	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+
+   rv=startLedsHndlTask(\
+      		   &leds, NULL,"leds",
+      		   STACK_SIZE_FOR_LEDS_TASK,
+      		   PRI_FOR_LEDS_TASK);
+         if(rv !=pdPASS)
+      	   Error_Handler((uint8_t *)__FILE__, __LINE__);
+
+//   rv=startFuelgaugeHndlTask(\
+//			   &fuelgauge, NULL,"fuelgauge",
+//			   STACK_SIZE_FOR_FUELGAUGE_TASK,
+//			   PRI_FOR_FUELGAUGE_TASK);
+//		  if(rv !=pdPASS)
+//		   Error_Handler((uint8_t *)__FILE__, __LINE__);
 
    aux_sendToAux(get_sw_ver_banner,strlen(get_sw_ver_banner),0,1,2);
 

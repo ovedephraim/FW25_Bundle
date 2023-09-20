@@ -32,6 +32,7 @@
 #include "main.h"
 #include "sys_conf.h"
 
+#define EPH_IRQ 11
 
 //#define DEBUG_COMMAND 1
 #define DEBUG_BT_COMMAND 1
@@ -229,7 +230,7 @@ void startAuxReception(callback_aux_t _cb, int aux_type)
 
 
 /**
- * @brief send to auxulaty communication task
+ * @brief send to auxiliary communication task
  * @brief This function transfers packet types via desiered channel
  * @brief if (pdFAIL==sendToAux( resp, MSGHDR_AUXCMDRESP_PACKET, portMAX_DELAY))
  * @param ustxStackDepth - tx task size
@@ -363,19 +364,12 @@ void aux_RxTask(void *para)
                 	 if(rxFramer.frx)
                 	 {
                 	    pd = (uint8_t *)aux_in_msg.buf;
-						if (pdFAIL == sendTofotaCmdInterp(pd))  // pd was aux_in_msg.buf
+
+						if (pdFAIL == sendTofotaCmdInterp(pd))
 						{
 							retMemBuf(p);
 						}
-//						else
-//						{
-//							retMemBuf(p);
-//						}
 					 }
-//					 else
-//					 {
-//						retMemBuf(p);
-//					 }
                      aux_rx_to=AUX_RX_TIMEOUT * 10;
 				 }
 			  }
@@ -769,7 +763,7 @@ void HAL_UART5Only_MspInit(UART_HandleTypeDef* huart)
   	  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
         /* USART2 interrupt Init */
-  	    HAL_NVIC_SetPriority(UART5_IRQn, 15, 1);
+  	    HAL_NVIC_SetPriority(UART5_IRQn, 2, 1);  // ephraim 15,1
         HAL_NVIC_EnableIRQ(UART5_IRQn);
       /* USER CODE BEGIN USART2_MspInit 1 */
 
@@ -969,7 +963,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     }
 
     /* USART2 interrupt Init */
-    HAL_NVIC_SetPriority(UART5_IRQn, 15, 1);
+    HAL_NVIC_SetPriority(UART5_IRQn, EPH_IRQ, 1);
     HAL_NVIC_EnableIRQ(UART5_IRQn);
 
   }

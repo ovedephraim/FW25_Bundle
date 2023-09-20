@@ -18,7 +18,7 @@
 
 #define RX_A4_PAYLOAD_STATE 		1
 
-#define RX_A4_MAX_PAYLOAD_LEN       256
+#define RX_A4_MAX_PAYLOAD_LEN       1048 // ephraim 256
 
 #ifdef USE_TIMESTAMPS
 PACKETBUF_HDR *a4FrameRx(struct sRxFramer *framer, uint8_t ch, void *arg, TIMESTAMP rxTS);
